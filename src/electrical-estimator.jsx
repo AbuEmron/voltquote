@@ -178,7 +178,7 @@ const NEC_REFS = [
   {article:"705.12",title:"Solar PV Interconnection",summary:"Load-side must not exceed 120% of bus rating. Rapid shutdown required for rooftop systems within 1 foot of array boundary.",category:"EV/Special"},
 ];
 
-const CAT_COLORS = // eslint-disable-line no-unused-vars
+const CAT_COLORS = { ...all the content... }; // eslint-disable-line no-unused-vars
   Safety:"#e05555",Receptacles:"#f5a623",Circuits:"#5588e0",Service:"#a855f7",
   Overcurrent:"#e08a55",Grounding:"#55a878",Wiring:"#5588e0",Lighting:"#e8d44d",
   Switches:"#f5a623",HVAC:"#55c8e0","EV/Special":"#a855f7","Low Voltage":"#8a9070",

@@ -1,2 +1,2 @@
-import ElectricalEstimator from './electrical-estimator';
+import ElectricalEstimator from './ElectricalEstimator';
 export default function App() { return <ElectricalEstimator />; }

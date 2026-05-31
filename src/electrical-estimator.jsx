@@ -416,7 +416,6 @@ export default function ElectricalEstimator() {
   // ── LANDING PAGE ──────────────────────────────────────────────────────────
   if (view==="landing") return (
     <div style={{minHeight:"100vh",background:"radial-gradient(ellipse at 20% 40%,#1a1a2e 0%,#0a0a0f 55%),radial-gradient(ellipse at 80% 10%,#16213e 0%,#0a0a0f 50%)",color:"#e8e0d0",fontFamily:"Georgia,serif"}}>
-      <div style={{position:"relative",zIndex:1}}>
         {/* Nav */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 32px",borderBottom:"1px solid rgba(245,166,35,0.15)"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -488,7 +487,6 @@ export default function ElectricalEstimator() {
         <div style={{textAlign:"center",padding:"20px",borderTop:"1px solid rgba(255,255,255,0.04)"}}>
           <p style={{fontSize:10,color:"#2a2030",fontFamily:"monospace",margin:0}}>VoltQuote · The electrician's estimating tool · voltquote.app</p>
         </div>
-      </div>
     </div>
   );
 
@@ -621,7 +619,7 @@ export default function ElectricalEstimator() {
   return (
     <div style={{minHeight:"100vh",background:"radial-gradient(ellipse at 20% 50%,#1a1a2e 0%,#0a0a0f 60%),radial-gradient(ellipse at 80% 20%,#16213e 0%,#0a0a0f 50%)",fontFamily:"Georgia,serif",color:"#e8e0d0"}}>
       {/* Header */}
-      <div style={{position:"relative",zIndex:1,borderBottom:"1px solid rgba(245,166,35,0.3)",padding:"18px 18px 0",background:"linear-gradient(180deg,#0d0d1a 0%,transparent 100%)"}}>
+      <div style={{borderBottom:"1px solid rgba(245,166,35,0.3)",padding:"18px 18px 0",background:"linear-gradient(180deg,#0d0d1a 0%,transparent 100%)"}}>
         <div style={{maxWidth:860,margin:"0 auto"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
             <button onClick={()=>setView("landing")} style={{background:"none",border:"none",cursor:"pointer",padding:0}}>
@@ -650,7 +648,7 @@ export default function ElectricalEstimator() {
         </div>
       </div>
 
-      <div style={{maxWidth:860,margin:"0 auto",padding:"20px 18px",position:"relative",zIndex:1}}>
+      <div style={{maxWidth:860,margin:"0 auto",padding:"20px 18px"}}>
 
         {/* ── ESTIMATOR TAB ── */}
         {activeTab==="estimator"&&<>

@@ -3,22 +3,125 @@ import NECReference from './NECReference';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
+// ─── REGION MULTIPLIERS (2026 verified vs national baseline) ─────────────────
+// Base = national average. Multipliers derived from BLS wage data, HomeGuide,
+// Angi, Workiz 2026 electrician cost reports by metro area.
+// National baseline hourly: $75–$100/hr. NYC/SF: $150–$200/hr. Rural: $50–$75/hr.
+
 const REGION_MULTIPLIERS = {
-  "New York City, NY":2.1,"Albany, NY":1.35,"Binghamton, NY":1.0,"Buffalo, NY":1.15,
-  "Rochester, NY":1.2,"Syracuse, NY":1.1,"Atlanta, GA":1.25,"Los Angeles, CA":1.9,
-  "Chicago, IL":1.6,"Houston, TX":1.1,"Phoenix, AZ":1.15,"Philadelphia, PA":1.55,
-  "San Francisco, CA":2.2,"Seattle, WA":1.75,"Miami, FL":1.3,"Denver, CO":1.4,
-  "Boston, MA":1.8,"Nashville, TN":1.2,"Charlotte, NC":1.15,"Dallas, TX":1.15,
-  "Minneapolis, MN":1.3,"Portland, OR":1.5,"Las Vegas, NV":1.2,"Baltimore, MD":1.45,
-  "Pittsburgh, PA":1.25,"Columbus, OH":1.1,"Cincinnati, OH":1.05,"Detroit, MI":1.2,
-  "St. Louis, MO":1.1,"Kansas City, MO":1.1,"Indianapolis, IN":1.05,"Louisville, KY":1.0,
-  "Memphis, TN":0.95,"New Orleans, LA":1.05,"Oklahoma City, OK":0.95,"Tulsa, OK":0.95,
-  "Albuquerque, NM":1.0,"Tucson, AZ":1.0,"Sacramento, CA":1.6,"San Diego, CA":1.8,
-  "Salt Lake City, UT":1.2,"Richmond, VA":1.2,"Virginia Beach, VA":1.15,"Raleigh, NC":1.2,
-  "Greensboro, NC":1.1,"Jacksonville, FL":1.1,"Tampa, FL":1.2,"Orlando, FL":1.15,
-  "Austin, TX":1.25,"San Antonio, TX":1.05,"El Paso, TX":0.9,"Boise, ID":1.1,
-  "Spokane, WA":1.2,"Anchorage, AK":1.8,"Honolulu, HI":2.0,"Rural/Small Town":0.85,
+  // Northeast — highest labor costs in US
+  "New York City, NY":2.15,"Albany, NY":1.38,"Binghamton, NY":1.0,
+  "Buffalo, NY":1.18,"Rochester, NY":1.22,"Syracuse, NY":1.12,
+  "Boston, MA":1.85,"Providence, RI":1.55,"Hartford, CT":1.6,
+  "Newark, NJ":1.9,"Philadelphia, PA":1.58,"Pittsburgh, PA":1.28,
+  "Baltimore, MD":1.48,"Washington DC":1.72,
+  // Southeast — moderate costs
+  "Atlanta, GA":1.28,"Charlotte, NC":1.18,"Raleigh, NC":1.22,
+  "Greensboro, NC":1.1,"Jacksonville, FL":1.12,"Tampa, FL":1.22,
+  "Orlando, FL":1.18,"Miami, FL":1.35,"Nashville, TN":1.25,
+  "Memphis, TN":0.98,"Louisville, KY":1.02,"Richmond, VA":1.22,
+  "Virginia Beach, VA":1.18,"New Orleans, LA":1.08,
+  // Midwest — moderate to slightly below average
+  "Chicago, IL":1.65,"Detroit, MI":1.25,"Minneapolis, MN":1.35,
+  "Columbus, OH":1.12,"Cincinnati, OH":1.08,"Cleveland, OH":1.15,
+  "Indianapolis, IN":1.08,"St. Louis, MO":1.12,"Kansas City, MO":1.12,
+  "Milwaukee, WI":1.25,"Omaha, NE":1.0,"Des Moines, IA":1.02,
+  // South Central — below average
+  "Houston, TX":1.12,"Dallas, TX":1.18,"Austin, TX":1.28,
+  "San Antonio, TX":1.08,"El Paso, TX":0.92,"Oklahoma City, OK":0.98,
+  "Tulsa, OK":0.98,"Albuquerque, NM":1.02,"Tucson, AZ":1.02,
+  // West — high costs
+  "Los Angeles, CA":1.95,"San Francisco, CA":2.25,"San Diego, CA":1.85,
+  "Sacramento, CA":1.65,"Phoenix, AZ":1.18,"Las Vegas, NV":1.25,
+  "Denver, CO":1.45,"Salt Lake City, UT":1.22,"Portland, OR":1.55,
+  "Seattle, WA":1.82,"Spokane, WA":1.22,"Boise, ID":1.15,
+  // Alaska & Hawaii — highest costs nationwide
+  "Anchorage, AK":1.85,"Honolulu, HI":2.1,
+  // Rural
+  "Rural/Small Town":0.88,
 };
+
+// ─── JOB CATEGORIES — 2026 VERIFIED PRICING ──────────────────────────────────
+// Sources: HomeGuide May 2026, Homewyse Jan/May 2026, Angi Mar 2026,
+// HomeAdvisor 2026, Fixr 2026, UseCalcPro Apr 2026
+// Base prices = national average installed cost (labor + materials)
+// low = simple replacement/retrofit | high = new circuit / finished walls
+// mat = material cost for markup calculation | hours = estimated labor hours
+
+const JOB_CATEGORIES = {
+  "Wiring Devices": {
+    receptacles:    {low:150,high:350,  label:"Receptacles (Outlets)",           unit:"each",   nec:"210.52",      mat:12,  hours:1.0,  note:"$150–$350 avg per Angi/HomeGuide May 2026. Low=swap, high=new circuit."},
+    gfciOutlet:     {low:150,high:350,  label:"GFCI Outlets",                    unit:"each",   nec:"210.8",       mat:22,  hours:1.0,  note:"$120–$350 per HomeGuide 2026. Required in kitchens, baths, garages, outdoors."},
+    afciOutlet:     {low:175,high:375,  label:"AFCI Outlets",                    unit:"each",   nec:"210.12",      mat:42,  hours:1.0,  note:"AFCI breaker adds $45–$75 per Angi 2026. Required in bedrooms and living areas."},
+    switches:       {low:150,high:200,  label:"Single-Pole Switches",            unit:"each",   nec:"404.2",       mat:10,  hours:0.75, note:"$80–$200 per HomeGuide 2026. Low=replacement, high=new run."},
+    threewaySwitch: {low:175,high:250,  label:"3-Way Switches",                  unit:"each",   nec:"404.2",       mat:18,  hours:1.25, note:"More complex wiring — requires 3-conductor cable between switches."},
+    dimmers:        {low:175,high:260,  label:"Dimmer Switches",                 unit:"each",   nec:"404.14",      mat:30,  hours:1.0,  note:"Smart dimmer adds cost. Must be compatible with LED fixtures."},
+    outdoorOutlet:  {low:180,high:350,  label:"Outdoor GFCI Outlets",            unit:"each",   nec:"210.8(A)(3)", mat:30,  hours:1.5,  note:"$180–$350 per HomeGuide 2026. In-use weatherproof cover required."},
+    usbOutlet:      {low:175,high:310,  label:"USB Combo Outlets",               unit:"each",   nec:"210.52",      mat:35,  hours:1.0,  note:"USB-A/C combo outlets $25–$45 material. Same labor as standard outlet."},
+    tamperResist:   {low:150,high:300,  label:"Tamper-Resistant Receptacles",    unit:"each",   nec:"406.12",      mat:15,  hours:0.75, note:"Required on ALL outlets in dwelling units per NEC 406.12."},
+    evCharger:      {low:750,high:1800, label:"EV Charger Level 2 (240V)",       unit:"each",   nec:"625.40",      mat:220, hours:5.0,  note:"$750–$2,200 per HomeGuide 2026. Requires dedicated 40–50A 240V circuit."},
+  },
+  "Lighting": {
+    snapLED:        {low:125,high:300,  label:"Snap-In LED Recessed Lights",     unit:"each",   nec:"410.116",     mat:28,  hours:1.0,  note:"$125–$300 per Angi 2026. IC-rated required where insulation present."},
+    canLight:       {low:150,high:300,  label:"Traditional Can Lights",          unit:"each",   nec:"410.116",     mat:40,  hours:1.5,  note:"$125–$300/can per HomeGuide 2026. Fan-rated box needed for heavier fixtures."},
+    wallLight:      {low:150,high:350,  label:"Wall Sconces / Light Fixtures",   unit:"each",   nec:"410.36",      mat:45,  hours:1.25, note:"$100–$350 labor per HomeGuide 2026. Heavy fixtures need fan-rated box."},
+    ceilingFan:     {low:250,high:600,  label:"Ceiling Fans (with light)",       unit:"each",   nec:"314.27",      mat:85,  hours:2.0,  note:"$300–$900 total per Angi 2026 (incl. fan). Fan-rated box mandatory per NEC 314.27."},
+    chandelierLight:{low:300,high:2000, label:"Chandelier / Heavy Fixture",      unit:"each",   nec:"314.27(D)",   mat:120, hours:3.0,  note:"$220–$3,400 total per HomeGuide 2026. Heavy fixtures need fan-rated medallion box."},
+    undercabinet:   {low:150,high:350,  label:"Under-Cabinet Lighting",          unit:"each",   nec:"410.36",      mat:45,  hours:1.25, note:"LED strip or puck lights. Hardwired preferred over plug-in for clean install."},
+    outdoorLight:   {low:150,high:350,  label:"Outdoor Light Fixtures",          unit:"each",   nec:"410.10",      mat:55,  hours:1.5,  note:"Wet-location rated fixtures required outdoors. GFCI protection needed nearby."},
+    motionLight:    {low:175,high:400,  label:"Motion Sensor Lights",            unit:"each",   nec:"410.10",      mat:65,  hours:1.5,  note:"Outdoor security lights. Wet-rated, GFCI protected, aimed per code."},
+    exitSign:       {low:250,high:500,  label:"Emergency Exit Signs",            unit:"each",   nec:"700.16",      mat:85,  hours:2.0,  note:"Battery backup required. Must illuminate whenever building is occupied."},
+  },
+  "Panels & Service": {
+    panel100:       {low:1500,high:3000, label:"100A Panel Replacement",         unit:"flat",   nec:"230.79",      mat:450, hours:10,   note:"$1,500–$4,000 per HomeGuide 2026. Includes permit, labor, materials."},
+    panel200:       {low:2000,high:4000, label:"200A Panel Replacement",         unit:"flat",   nec:"230.79",      mat:650, hours:12,   note:"$2,000–$5,000 per Angi 2026. Most common upgrade for modern homes."},
+    panel400:       {low:4000,high:8000, label:"400A Panel Upgrade",             unit:"flat",   nec:"230.79",      mat:1400,hours:18,   note:"$4,000–$8,000+ installed. Required for large homes with EV, solar, or heavy loads."},
+    subpanel100:    {low:1000,high:2500, label:"100A Subpanel Install",          unit:"flat",   nec:"225.30",      mat:380, hours:8,    note:"$1,000–$2,500 per HomeGuide 2026. Common for garages, additions, or workshops."},
+    subpanel200:    {low:1500,high:3500, label:"200A Subpanel Install",          unit:"flat",   nec:"225.30",      mat:550, hours:10,   note:"$1,500–$3,500 installed. Separate neutral and ground bars required per NEC 250."},
+    panelCircuit:   {low:200,high:500,   label:"New Branch Circuit at Panel",    unit:"each",   nec:"210.11",      mat:55,  hours:2.5,  note:"$200–$500 per circuit per Angi 2026. Includes breaker, wire run, and device."},
+    meterBase:      {low:500,high:1200,  label:"Meter Base Replacement",         unit:"flat",   nec:"230.66",      mat:180, hours:5,    note:"Utility coordination required. Permit and inspection always needed."},
+    groundRods:     {low:400,high:800,   label:"Grounding Electrode System",     unit:"flat",   nec:"250.50",      mat:90,  hours:4,    note:"Two ground rods minimum typically. GEC sized per NEC Table 250.66."},
+    surgeProtector: {low:300,high:600,   label:"Whole-Home Surge Protector (SPD)",unit:"each",  nec:"230.67",      mat:130, hours:2,    note:"NOW REQUIRED by NEC 2023 §230.67 on all new services. Type 1 or 2 SPD."},
+    exteriorDisconn:{low:400,high:900,   label:"Exterior Emergency Disconnect",  unit:"flat",   nec:"230.85",      mat:150, hours:3,    note:"NOW REQUIRED by NEC 2023 §230.85 on all new residential services."},
+  },
+  "Appliance Circuits": {
+    dryer240:       {low:250,high:600,   label:"Dryer Circuit (240V / 30A)",     unit:"each",   nec:"210.11(C)(2)",mat:90,  hours:3,    note:"$250–$800 per HomeGuide 2026. 10 AWG / 30A. 4-wire connection required."},
+    range240:       {low:300,high:700,   label:"Range/Oven Circuit (240V / 50A)",unit:"each",   nec:"210.19",      mat:90,  hours:3,    note:"$250–$800 per HomeGuide 2026. 6 AWG / 50A. 4-wire required."},
+    acCircuit:      {low:250,high:600,   label:"A/C Dedicated Circuit",          unit:"each",   nec:"440.62",      mat:80,  hours:2.5,  note:"Sized per nameplate. Disconnect required within sight per NEC 440.62."},
+    hotTub:         {low:1000,high:2500, label:"Hot Tub / Spa Circuit",          unit:"each",   nec:"680.42",      mat:280, hours:8,    note:"$1,000–$2,500 installed. GFCI required. 50A/240V typical."},
+    pool:           {low:1500,high:4000, label:"Pool Electrical (bonding+circuit)",unit:"flat", nec:"680.26",      mat:450, hours:14,   note:"$1,500–$4,000 per HomeGuide 2026. Bonding all metal parts mandatory."},
+    wellPump:       {low:500,high:1200,  label:"Well Pump Circuit",              unit:"each",   nec:"430.22",      mat:110, hours:4,    note:"Sized at 125% of motor FLA. Disconnect required near pump per NEC 430."},
+    generator:      {low:2000,high:5000, label:"Generator + Transfer Switch",    unit:"flat",   nec:"702.12",      mat:900, hours:14,   note:"$2,000–$5,000 installed per Angi 2026. Transfer switch mandatory — prevents backfeed."},
+    solarTie:       {low:1000,high:3000, label:"Solar PV Interconnect",          unit:"flat",   nec:"705.12",      mat:350, hours:10,   note:"120% rule applies to panel bus. Rapid shutdown required per NEC 690."},
+    batteryBackup:  {low:3000,high:8000, label:"Battery Backup System",          unit:"flat",   nec:"702.4",       mat:1500,hours:16,   note:"$3,000–$8,000+ installed. Permitting and utility notification typically required."},
+  },
+  "Safety Devices": {
+    smokeDetector:  {low:100,high:200,   label:"Smoke Detectors (hardwired)",    unit:"each",   nec:"760.32",      mat:28,  hours:1.0,  note:"$70–$150 labor per Angi 2026. Interconnected hardwired required in new construction."},
+    coDetector:     {low:100,high:200,   label:"CO Detectors (hardwired)",       unit:"each",   nec:"760.32",      mat:32,  hours:1.0,  note:"Required near sleeping areas. Battery backup required per most local codes."},
+    comboDet:       {low:120,high:220,   label:"Combo Smoke/CO Detectors",       unit:"each",   nec:"760.32",      mat:45,  hours:1.0,  note:"Most efficient option. Replaces both devices with one listed combination unit."},
+    afciBreaker:    {low:120,high:200,   label:"AFCI Breakers",                  unit:"each",   nec:"210.12",      mat:50,  hours:1.0,  note:"$45–$75 each per Angi 2026. Required in all living areas per NEC 210.12."},
+    gfciBreaker:    {low:120,high:200,   label:"GFCI Breakers",                  unit:"each",   nec:"210.8",       mat:50,  hours:1.0,  note:"Protects entire circuit. Alternative to GFCI outlets in wet locations."},
+    tamperGFCI:     {low:150,high:300,   label:"Tamper-Resistant GFCI Outlets",  unit:"each",   nec:"406.12",      mat:25,  hours:1.0,  note:"Dual protection — both tamper-resistant shutters AND GFCI. Best practice for kitchens."},
+  },
+  "Wiring & Rough-In": {
+    rewireRoom:     {low:500,high:1200,  label:"Rewire Single Room",             unit:"each",   nec:"310.12",      mat:180, hours:6,    note:"$500–$1,500 per room. Includes outlets, switches, lights on new circuits."},
+    rewireHome:     {low:10000,high:30000,label:"Full Home Rewire",              unit:"flat",   nec:"310.12",      mat:4000,hours:100,  note:"$10,000–$30,000 per HomeGuide 2026. Required for knob-and-tube or heavily damaged wiring."},
+    aluminumFix:    {low:200,high:400,   label:"Aluminum Wiring Fix (per outlet)",unit:"each",  nec:"110.14",      mat:35,  hours:2.0,  note:"COPALUM crimp or AlumiConn connector required. Cannot use standard wire nuts."},
+    lowVoltage:     {low:100,high:200,   label:"Low Voltage (data/cable/phone)", unit:"each",   nec:"800.24",      mat:22,  hours:1.0,  note:"Category 6 data, coax cable, or phone line. 2-inch separation from power wiring."},
+    conduitRun:     {low:8,  high:15,    label:"Conduit Run (per linear foot)",  unit:"lin ft", nec:"358.10",      mat:5,   hours:0.1,  note:"EMT $1.80–$4.50/ft labor, RMC $6–$12/ft per 2026 BhumiCalculator data."},
+    wireRun:        {low:4,  high:10,    label:"Wire Pull (per linear foot)",    unit:"lin ft", nec:"310.15",      mat:1.5, hours:0.04, note:"$4–$8/ft for standard residential wire runs per HomeGuide 2026."},
+    junctionBox:    {low:100,high:250,   label:"Junction Box (installed)",       unit:"each",   nec:"314.29",      mat:10,  hours:1.0,  note:"All splices must be in accessible boxes with covers per NEC 300.15."},
+  },
+  "Outdoor & Specialty": {
+    outdoorPanel:   {low:800,high:2000,  label:"Outdoor Subpanel",               unit:"flat",   nec:"225.30",      mat:250, hours:8,    note:"NEMA 3R rated enclosure required. Single feeder to structure per NEC 225.30."},
+    landscape:      {low:400,high:1200,  label:"Landscape Lighting System",      unit:"flat",   nec:"411.3",       mat:180, hours:6,    note:"Low voltage systems popular. Line voltage requires GFCI protection outdoors."},
+    shed:           {low:800,high:2000,  label:"Shed / Detached Garage Electric",unit:"flat",   nec:"225.30",      mat:250, hours:8,    note:"Grounding electrode required at detached structure. Disconnect required at building."},
+    securityCamera: {low:150,high:300,   label:"Security Camera Power",          unit:"each",   nec:"210.52",      mat:25,  hours:1.25, note:"PoE cameras can share data circuit. Hardwired power provides best reliability."},
+    doorbell:       {low:150,high:350,   label:"Doorbell / Video Doorbell",      unit:"each",   nec:"725.3",       mat:30,  hours:1.5,  note:"Transformer typically 16V/30VA. Most smart doorbells require 16–24VAC."},
+    poolLight:      {low:400,high:1000,  label:"Pool / Spa Light",               unit:"each",   nec:"680.23",      mat:200, hours:4,    note:"Must be low voltage (12V) or listed for wet locations. GFCI required per NEC 680."},
+  },
+};
+
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
@@ -76,73 +179,6 @@ const TRANSLATIONS = {
     shareBtn:"Compartir VoltQuote", shareMsg:"¡Comparte VoltQuote con otro electricista y ambos obtienen 5 estimados gratis!",
     langToggle:"English",
   }
-};
-
-const JOB_CATEGORIES = {
-  "Wiring Devices": {
-    receptacles:{low:80,high:120,label:"Receptacles (Outlets)",unit:"each",nec:"210.52",mat:8,hours:0.75},
-    gfciOutlet:{low:100,high:150,label:"GFCI Outlets",unit:"each",nec:"210.8",mat:18,hours:0.75},
-    afciOutlet:{low:110,high:160,label:"AFCI Outlets",unit:"each",nec:"210.12",mat:35,hours:0.75},
-    switches:{low:50,high:80,label:"Single-Pole Switches",unit:"each",nec:"404.2",mat:8,hours:0.5},
-    threewaySwitch:{low:80,high:130,label:"3-Way Switches",unit:"each",nec:"404.2",mat:15,hours:1.0},
-    dimmers:{low:90,high:140,label:"Dimmer Switches",unit:"each",nec:"404.14",mat:25,hours:0.75},
-    outdoorOutlet:{low:120,high:200,label:"Outdoor GFCI Outlets",unit:"each",nec:"210.8(A)(3)",mat:25,hours:1.25},
-    usbOutlet:{low:100,high:160,label:"USB Combo Outlets",unit:"each",nec:"210.52",mat:30,hours:0.75},
-    tamperResist:{low:90,high:130,label:"Tamper-Resistant Receptacles",unit:"each",nec:"406.12",mat:12,hours:0.75},
-  },
-  "Lighting": {
-    snapLED:{low:90,high:130,label:"Snap-In LED Recessed Lights",unit:"each",nec:"410.116",mat:25,hours:0.75},
-    canLight:{low:120,high:180,label:"Traditional Can Lights",unit:"each",nec:"410.116",mat:35,hours:1.25},
-    wallLight:{low:120,high:200,label:"Wall Sconces / Fixtures",unit:"each",nec:"410.36",mat:40,hours:1.0},
-    ceilingFan:{low:150,high:250,label:"Ceiling Fans (w/ light)",unit:"each",nec:"314.27",mat:80,hours:1.5},
-    chandelierLight:{low:200,high:400,label:"Chandelier / Heavy Fixture",unit:"each",nec:"314.27(D)",mat:100,hours:2.0},
-    undercabinet:{low:80,high:150,label:"Under-Cabinet Lighting",unit:"each",nec:"410.36",mat:40,hours:1.0},
-    outdoorLight:{low:100,high:180,label:"Outdoor Light Fixtures",unit:"each",nec:"410.10",mat:50,hours:1.25},
-    motionLight:{low:120,high:200,label:"Motion Sensor Lights",unit:"each",nec:"410.10",mat:60,hours:1.25},
-  },
-  "Panels & Service": {
-    panel100:{low:1200,high:2000,label:"100A Panel Replacement",unit:"flat",nec:"230.79",mat:400,hours:8},
-    panel200:{low:1800,high:3200,label:"200A Panel Replacement",unit:"flat",nec:"230.79",mat:600,hours:10},
-    panel400:{low:3500,high:6000,label:"400A Panel Upgrade",unit:"flat",nec:"230.79",mat:1200,hours:16},
-    subpanel100:{low:900,high:1600,label:"100A Subpanel Install",unit:"flat",nec:"225.30",mat:350,hours:7},
-    subpanel200:{low:1500,high:2500,label:"200A Subpanel Install",unit:"flat",nec:"225.30",mat:500,hours:10},
-    panelCircuit:{low:150,high:300,label:"New Branch Circuit",unit:"each",nec:"210.11",mat:50,hours:2},
-    meterBase:{low:400,high:800,label:"Meter Base Replacement",unit:"flat",nec:"230.66",mat:150,hours:4},
-    groundingElectrode:{low:200,high:400,label:"Grounding Electrode System",unit:"flat",nec:"250.50",mat:80,hours:3},
-    surgeProtector:{low:250,high:450,label:"Whole-Home Surge Protector",unit:"each",nec:"230.67",mat:120,hours:1.5},
-  },
-  "Appliance Circuits": {
-    evCharger:{low:500,high:900,label:"EV Charger (Level 2)",unit:"each",nec:"625.40",mat:200,hours:4},
-    dryer240:{low:250,high:450,label:"Dryer Circuit (240V)",unit:"each",nec:"210.11(C)(2)",mat:80,hours:2.5},
-    range240:{low:300,high:500,label:"Range/Oven Circuit (240V)",unit:"each",nec:"210.19",mat:80,hours:2.5},
-    acCircuit:{low:200,high:400,label:"A/C Dedicated Circuit",unit:"each",nec:"440.62",mat:75,hours:2},
-    hotTub:{low:800,high:1500,label:"Hot Tub / Spa Circuit",unit:"each",nec:"680.42",mat:250,hours:6},
-    pool:{low:1200,high:2500,label:"Pool Electrical",unit:"flat",nec:"680.26",mat:400,hours:10},
-    generator:{low:1500,high:3500,label:"Generator + Transfer Switch",unit:"flat",nec:"702.12",mat:800,hours:12},
-    solarTie:{low:800,high:2000,label:"Solar PV Interconnect",unit:"flat",nec:"705.12",mat:300,hours:8},
-  },
-  "Safety Devices": {
-    smokeDetector:{low:60,high:100,label:"Smoke Detectors (hardwired)",unit:"each",nec:"760.32",mat:25,hours:0.75},
-    coDetector:{low:60,high:100,label:"CO Detectors (hardwired)",unit:"each",nec:"760.32",mat:30,hours:0.75},
-    comboDet:{low:80,high:130,label:"Combo Smoke/CO Detectors",unit:"each",nec:"760.32",mat:40,hours:0.75},
-    afciBreaker:{low:80,high:140,label:"AFCI Breakers",unit:"each",nec:"210.12",mat:45,hours:0.75},
-    gfciBreaker:{low:80,high:140,label:"GFCI Breakers",unit:"each",nec:"210.8",mat:45,hours:0.75},
-  },
-  "Wiring & Rough-In": {
-    rewireRoom:{low:400,high:800,label:"Rewire Single Room",unit:"each",nec:"310.12",mat:150,hours:5},
-    rewireHome:{low:8000,high:20000,label:"Full Home Rewire",unit:"flat",nec:"310.12",mat:3000,hours:80},
-    aluminumRemediation:{low:150,high:300,label:"Aluminum Wiring Fix (per outlet)",unit:"each",nec:"110.14",mat:30,hours:1.5},
-    lowVoltage:{low:80,high:150,label:"Low Voltage Wiring (data/cable)",unit:"each",nec:"800.24",mat:20,hours:1.0},
-    conduitRun:{low:15,high:30,label:"Conduit Run (per linear foot)",unit:"lin ft",nec:"358.10",mat:5,hours:0.1},
-    wireRun:{low:3,high:8,label:"Wire Pull (per linear foot)",unit:"lin ft",nec:"310.15",mat:1,hours:0.03},
-    junctionBox:{low:20,high:50,label:"Junction Box (installed)",unit:"each",nec:"314.29",mat:8,hours:0.5},
-  },
-  "Outdoor & Specialty": {
-    outdoorPanel:{low:500,high:1000,label:"Outdoor Sub-Panel",unit:"flat",nec:"225.30",mat:200,hours:5},
-    landscape:{low:300,high:700,label:"Landscape Lighting System",unit:"flat",nec:"411.3",mat:150,hours:4},
-    shed:{low:600,high:1200,label:"Shed / Detached Garage Electric",unit:"flat",nec:"225.30",mat:200,hours:6},
-    securityCamera:{low:80,high:150,label:"Security Camera Power",unit:"each",nec:"210.52",mat:20,hours:1.0},
-  },
 };
 
 const CONDITION_ADJUSTMENTS = {

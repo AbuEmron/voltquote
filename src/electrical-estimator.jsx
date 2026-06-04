@@ -925,6 +925,146 @@ function NECReference() {
   );
 }
 
+// ─── WIREWAY APP ICON LOGO ────────────────────────────────────────────────────
+// Premium W mark — App Store quality: deep gradient bg, bold geometric W,
+// inner glow, subtle grain texture, clean enough to read at 16px
+function WirecayMark({ size = 32 }) {
+  const id = "ww";
+  return (
+    <svg
+      width={size} height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ flexShrink: 0, borderRadius: size * 0.22, display: "block" }}
+    >
+      <defs>
+        {/* Background: deep charcoal-to-near-black with a warm undertone */}
+        <linearGradient id={`${id}-bg`} x1="30" y1="0" x2="70" y2="100" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#1c1a14"/>
+          <stop offset="100%" stopColor="#0a0906"/>
+        </linearGradient>
+
+        {/* W fill: bright platinum-gold top to deep amber base */}
+        <linearGradient id={`${id}-w`} x1="50" y1="18" x2="50" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#fffae8"/>
+          <stop offset="28%"  stopColor="#f0d87c"/>
+          <stop offset="62%"  stopColor="#c8971e"/>
+          <stop offset="100%" stopColor="#7a5500"/>
+        </linearGradient>
+
+        {/* Sheen: soft diagonal highlight over the W */}
+        <linearGradient id={`${id}-sheen`} x1="20" y1="15" x2="65" y2="55" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#ffffff" stopOpacity="0.22"/>
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
+        </linearGradient>
+
+        {/* Ambient top glow on background */}
+        <radialGradient id={`${id}-glow`} cx="50%" cy="15%" r="55%">
+          <stop offset="0%"   stopColor="#c8971e" stopOpacity="0.18"/>
+          <stop offset="100%" stopColor="#c8971e" stopOpacity="0"/>
+        </radialGradient>
+
+        {/* Inner shadow for depth */}
+        <filter id={`${id}-shadow`} x="-5%" y="-5%" width="115%" height="125%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.5"
+            floodColor="#000000" floodOpacity="0.55"/>
+        </filter>
+
+        {/* Subtle emboss / inner bevel on W */}
+        <filter id={`${id}-emboss`} x="-5%" y="-5%" width="115%" height="120%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="blur"/>
+          <feOffset dx="0" dy="-1" in="blur" result="offset"/>
+          <feComposite in="SourceGraphic" in2="offset" operator="over"/>
+        </filter>
+      </defs>
+
+      {/* ── BACKGROUND ── */}
+      {/* Base fill */}
+      <rect width="100" height="100" rx="22" fill={`url(#${id}-bg)`}/>
+      {/* Ambient gold glow from top */}
+      <rect width="100" height="100" rx="22" fill={`url(#${id}-glow)`}/>
+      {/* Subtle inner border (1px inset bevel) */}
+      <rect x="0.75" y="0.75" width="98.5" height="98.5" rx="21.5"
+        fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5"/>
+
+      {/* ── W LETTERFORM ── */}
+      {/*
+        Geometry: clean geometric condensed W
+        - Cap height: y=18 to y=82  (64 units tall)
+        - Four strokes of equal weight (~13 units wide)
+        - Sharp pointed valley at center bottom (y=82)
+        - Two outer stroke tops flush with cap line
+        - Slight inward taper on outer strokes (feels premium, not blocky)
+      */}
+      <g filter={`url(#${id}-shadow)`}>
+        <path
+          d={[
+            /* Left outer stroke — slightly tapered */
+            "M 14,18",
+            "L 26,18",
+            "L 40,72",
+            "L 28,72",
+            "Z",
+
+            /* Left inner stroke */
+            "M 28,72",
+            "L 40,72",
+            "L 50,36",
+            "L 60,72",
+            "L 72,72",
+
+            /* Right inner stroke */
+            "L 60,72",
+            "L 74,18",
+            "L 86,18",
+
+            /* Right outer stroke */
+            "L 74,18",
+            "L 86,18",
+            "L 72,72",
+            "L 84,72",
+
+            /* Close */
+          ].join(" ")}
+          fill="none"
+        />
+        {/* Render as two clean polygons for crisp fills */}
+
+        {/* LEFT HALF of W */}
+        <polygon
+          points="14,18 26,18 40,72 50,36 60,72 72,72 60,72 50,36 40,72 28,72"
+          fill={`url(#${id}-w)`}
+          filter={`url(#${id}-emboss)`}
+        />
+
+        {/* RIGHT HALF of W */}
+        <polygon
+          points="50,36 60,72 72,72 86,18 74,18"
+          fill={`url(#${id}-w)`}
+          filter={`url(#${id}-emboss)`}
+        />
+
+        {/* COMPLETE W as single clean path — this is the actual render */}
+        <path
+          d="M14,18 L26,18 L40,72 L50,36 L60,72 L74,18 L86,18 L72,72 L50,82 L28,72 Z"
+          fill={`url(#${id}-w)`}
+        />
+
+        {/* Sheen overlay on W — catches light on upper-left */}
+        <path
+          d="M14,18 L26,18 L40,72 L50,36 L60,72 L74,18 L86,18 L72,72 L50,82 L28,72 Z"
+          fill={`url(#${id}-sheen)`}
+        />
+      </g>
+
+      {/* ── BOTTOM LIGHT EDGE ── subtle reflection line at bottom of icon */}
+      <rect x="18" y="94" width="64" height="1.5" rx="0.75"
+        fill="rgba(255,255,255,0.06)"/>
+    </svg>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Wireway() {
   const [entries,      setEntries]      = useState({});
@@ -1170,10 +1310,10 @@ export default function Wireway() {
         {/* ── HEADER ── */}
         <div style={{ borderBottom:"1px solid rgba(255,255,255,0.055)", background:"rgba(10,10,12,0.88)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }} className="no-print">
           <div style={{ maxWidth:800, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:9 }}>
               {logoDataUrl
-                ? <img src={logoDataUrl} alt="logo" style={{ height:34, width:"auto", borderRadius:4, objectFit:"contain" }} />
-                : <div style={{ width:26, height:26, borderRadius:6, background:"linear-gradient(135deg,#e8c97a 0%,#c9a84c 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#0a0a0c" }}>W</div>
+                ? <img src={logoDataUrl} alt="logo" style={{ height:32, width:"auto", borderRadius:6, objectFit:"contain" }} />
+                : <WirecayMark size={32} />
               }
               <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>{company.name || "Wireway"}</span>
               <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
@@ -1288,7 +1428,7 @@ export default function Wireway() {
                     <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16, paddingBottom:16, borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
                       {logoDataUrl
                         ? <img src={logoDataUrl} alt="logo" style={{ height:48, width:"auto", maxWidth:120, objectFit:"contain", borderRadius:6 }} />
-                        : <div style={{ width:44, height:44, borderRadius:8, background:"linear-gradient(135deg,#e8c97a,#c9a84c)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, color:"#0a0a0c", flexShrink:0 }}>{(company.name || "W")[0].toUpperCase()}</div>
+                        : <WirecayMark size={48} />
                       }
                       <div style={{ flex:1 }}>
                         <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:"#fff", letterSpacing:"-0.02em" }}>{company.name || "Your Company Name"}</div>
@@ -1592,7 +1732,7 @@ export default function Wireway() {
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 {logoDataUrl
                   ? <img src={logoDataUrl} alt="logo" style={{ height:52, width:"auto", maxWidth:140, objectFit:"contain", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)" }} />
-                  : <div style={{ width:52, height:52, borderRadius:8, background:"rgba(255,255,255,0.03)", border:"2px dashed rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ fontSize:22, color:"rgba(255,255,255,0.2)" }}>⬡</div></div>
+                  : <div style={{ width:52, height:52, borderRadius:10, background:"rgba(255,255,255,0.03)", border:"2px dashed rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><WirecayMark size={40} /></div>
                 }
                 <div style={{ flex:1 }}>
                   <label style={{ display:"inline-block", padding:"8px 14px", background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", borderRadius:7, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer" }}>

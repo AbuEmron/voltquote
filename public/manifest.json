@@ -1,91 +1,29 @@
 {
-  "name": "VoltQuote — Electrical Estimator",
-  "short_name": "VoltQuote",
-  "description": "Professional residential electrical estimating tool with location-based pricing, NEC 2023 reference, and AI-powered quotes.",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0a0a0f",
-  "theme_color": "#f5a623",
-  "categories": ["business", "utilities", "productivity"],
+  "short_name": "Wireway",
+  "name": "Wireway — NEC 2023 Electrical Estimating",
+  "description": "Professional electrical estimating for residential work. NEC 2023 compliant, material vs labor split, client quotes and signatures.",
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
+      "src": "logo192.png",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "192x192"
     },
     {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
+      "src": "logo512.png",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "512x512"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/screen1.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "label": "VoltQuote Estimator"
-    },
-    {
-      "src": "/screenshots/screen2.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "label": "NEC 2023 Reference"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "New Estimate",
-      "short_name": "Estimate",
-      "description": "Start a new electrical estimate",
-      "url": "/?tab=estimator",
-      "icons": [{"src": "/icons/icon-96x96.png", "sizes": "96x96"}]
-    },
-    {
-      "name": "NEC Reference",
-      "short_name": "NEC 2023",
-      "description": "Browse NEC 2023 code reference",
-      "url": "/?tab=nec",
-      "icons": [{"src": "/icons/icon-96x96.png", "sizes": "96x96"}]
-    }
-  ]
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0a0a0c",
+  "background_color": "#0a0a0c",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "utilities"],
+  "screenshots": []
 }

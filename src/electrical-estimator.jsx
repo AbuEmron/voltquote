@@ -181,9 +181,68 @@ const CATEGORIES = [
       // Conduit: ~45 min per 10 ft EMT; underground adds ~50% more
       { id: "conduit_run",      label: "Conduit Run (per 10 ft)",           nec: "NEC 358.26",      materialCost: 35,   laborCost: 64,   laborHours: 0.75,unit: "10 ft",   variants: [{ label: "EMT", m: 1 }, { label: "PVC Schedule 40", m: 0.85 }, { label: "Rigid/GRC", m: 1.4 }, { label: "Underground Direct Burial", m: 1.6 }] },
       { id: "solar_ready",      label: "Solar / Battery Ready Conduit",     nec: "NEC 690.12",      materialCost: 280,  laborCost: 510,  laborHours: 6,   unit: "unit",    variants: [{ label: "Panel Conduit Stub", m: 1 }, { label: "Full Conduit + Junction", m: 1.5 }] },
-      // Hot tub: ~8 hr — trench or conduit, 240V/50A, GFCI, bonding, disconnect
       { id: "hot_tub",          label: "Hot Tub / Spa Install",             nec: "NEC 680.42",      materialCost: 380,  laborCost: 680,  laborHours: 8,   unit: "unit",    variants: [{ label: "Plug-in NEMA 14-50", m: 1 }, { label: "Hardwired 240V/50A", m: 1.4 }, { label: "With GFCI + Bonding", m: 1.6 }] },
       { id: "ev_parking",       label: "Driveway / Parking EV Outlet",      nec: "NEC 625.40",      materialCost: 300,  laborCost: 510,  laborHours: 6,   unit: "unit",    variants: [{ label: "NEMA 14-50 Outdoor", m: 1 }, { label: "Level 2 EVSE Pedestal", m: 1.6 }] },
+      { id: "exterior_disconnect", label: "Exterior Emergency Disconnect",  nec: "NEC 230.85",      materialCost: 180,  laborCost: 255,  laborHours: 3,   unit: "unit",    variants: [{ label: "Meter Main Combo", m: 1 }, { label: "Separate Exterior Disconnect", m: 1.3 }] },
+      { id: "energy_mgmt",      label: "Energy Management System",          nec: "NEC 220.70",      materialCost: 350,  laborCost: 425,  laborHours: 5,   unit: "unit",    variants: [{ label: "Basic Load Monitor", m: 1 }, { label: "Full Smart Panel Integration", m: 2 }] },
+    ],
+  },
+  {
+    id: "pool_water", label: "Pool, Spa & Water Features", icon: "◌", color: "#7ec8e8",
+    services: [
+      // Pool bonding: all metal within 5 ft must be bonded — 6–10 hr thorough job
+      { id: "pool_bonding",       label: "Pool Equipotential Bonding",        nec: "NEC 680.26",      materialCost: 280,  laborCost: 595,  laborHours: 7,   unit: "system",  variants: [{ label: "New Pool – Full Bond", m: 1 }, { label: "Existing Pool – Remediation", m: 1.3 }, { label: "With Rebar Grid", m: 1.5 }] },
+      { id: "pool_grounding",     label: "Pool Equipment Grounding",          nec: "NEC 680.6",       materialCost: 120,  laborCost: 255,  laborHours: 3,   unit: "system",  variants: [{ label: "Equipment Pad Ground", m: 1 }, { label: "Full System Ground + Bond", m: 1.8 }] },
+      { id: "pool_pump_circuit",  label: "Pool Pump Motor Circuit",           nec: "NEC 680.21",      materialCost: 180,  laborCost: 425,  laborHours: 5,   unit: "unit",    variants: [{ label: "120V Single Speed", m: 1 }, { label: "240V Single Speed", m: 1.2 }, { label: "240V Variable Speed", m: 1.4 }] },
+      { id: "pool_heater_circuit",label: "Pool / Spa Heater Circuit",         nec: "NEC 680.21",      materialCost: 220,  laborCost: 510,  laborHours: 6,   unit: "unit",    variants: [{ label: "Gas Heater Outlet", m: 0.6 }, { label: "Electric Heater 240V/50A", m: 1 }, { label: "Heat Pump Circuit", m: 1.1 }] },
+      { id: "pool_receptacle",    label: "Pool Area Receptacle",              nec: "NEC 680.22",      materialCost: 65,   laborCost: 213,  laborHours: 2.5, unit: "outlet",  variants: [{ label: "6–10 ft from Edge (GFCI)", m: 1 }, { label: "10–20 ft from Edge (GFCI)", m: 1 }, { label: "Deck Pedestal Box", m: 1.5 }] },
+      { id: "pool_light_under",   label: "Underwater Pool Light",             nec: "NEC 680.23",      materialCost: 380,  laborCost: 510,  laborHours: 6,   unit: "fixture", variants: [{ label: "120V Niched Fixture", m: 1 }, { label: "12V Low-Voltage", m: 0.9 }, { label: "LED Color Retrofit", m: 0.8 }, { label: "New Niche Install", m: 1.6 }] },
+      { id: "pool_light_above",   label: "Above-Water / Deck Pool Lighting",  nec: "NEC 680.22",      materialCost: 120,  laborCost: 255,  laborHours: 3,   unit: "fixture", variants: [{ label: "Deck Post Light", m: 1 }, { label: "Landscape Uplighting", m: 1.2 }, { label: "Step / Hardscape Lights", m: 1.4 }] },
+      { id: "pool_disconnect",    label: "Pool Equipment Disconnect",         nec: "NEC 680.12",      materialCost: 120,  laborCost: 213,  laborHours: 2.5, unit: "unit",    variants: [{ label: "Single Equipment", m: 1 }, { label: "Full Pad Disconnect", m: 1.5 }] },
+      { id: "pool_gfci",          label: "Pool GFCI Breaker Protection",      nec: "NEC 680.21(C)",   materialCost: 90,   laborCost: 106,  laborHours: 1.25,unit: "circuit", variants: [{ label: "20A Pump Circuit", m: 1 }, { label: "With Heater Circuit", m: 1.5 }] },
+      { id: "fountain_circuit",   label: "Fountain / Water Feature Circuit",  nec: "NEC 680.51",      materialCost: 120,  laborCost: 255,  laborHours: 3,   unit: "unit",    variants: [{ label: "Small Fountain (120V)", m: 1 }, { label: "Large Feature (240V)", m: 1.5 }, { label: "With Underwater Lighting", m: 1.8 }] },
+    ],
+  },
+  {
+    id: "generator_systems", label: "Generator & Backup Power Systems", icon: "⚡", color: "#c8e87e",
+    services: [
+      { id: "generator_install",  label: "Standby Generator Installation",    nec: "NEC 702.4",       materialCost: 800,  laborCost: 1020, laborHours: 12,  unit: "unit",    variants: [{ label: "7–12 kW Air-Cooled", m: 1 }, { label: "14–20 kW Air-Cooled", m: 1.3 }, { label: "22+ kW Liquid-Cooled", m: 1.8 }] },
+      { id: "generator_transfer2",label: "Generator Transfer Switch",         nec: "NEC 702.6",       materialCost: 450,  laborCost: 510,  laborHours: 6,   unit: "unit",    variants: [{ label: "Manual – 6 Circuit", m: 1 }, { label: "Manual – 10 Circuit", m: 1.2 }, { label: "Interlock Kit", m: 0.55 }, { label: "Automatic (ATS)", m: 2.2 }] },
+      { id: "generator_inlet2",   label: "Generator Inlet Box",               nec: "NEC 702.7",       materialCost: 120,  laborCost: 213,  laborHours: 2.5, unit: "unit",    variants: [{ label: "30A / 7500W", m: 1 }, { label: "50A / 12500W", m: 1.2 }] },
+      { id: "generator_circuit",  label: "Generator Dedicated Circuit / Run", nec: "NEC 702.5",       materialCost: 200,  laborCost: 340,  laborHours: 4,   unit: "unit",    variants: [{ label: "From Panel to Inlet", m: 1 }, { label: "Long Run (50+ ft)", m: 1.5 }] },
+      { id: "battery_storage",    label: "Battery Storage System (e.g. Powerwall)", nec: "NEC 706.20",  materialCost: 1200, laborCost: 850,  laborHours: 10,  unit: "unit",    variants: [{ label: "Single Unit", m: 1 }, { label: "Stacked (2+ Units)", m: 1.6 }, { label: "With Gateway/Inverter", m: 1.4 }] },
+      { id: "solar_inverter",     label: "Solar Inverter / Disconnect Install",nec: "NEC 690.15",      materialCost: 400,  laborCost: 510,  laborHours: 6,   unit: "unit",    variants: [{ label: "String Inverter", m: 1 }, { label: "Microinverter System", m: 1.4 }, { label: "Hybrid Inverter (Solar + Battery)", m: 1.8 }] },
+      { id: "generator_grounding",label: "Generator Grounding & Bonding",     nec: "NEC 250.35",      materialCost: 80,   laborCost: 170,  laborHours: 2,   unit: "unit",    variants: [{ label: "Portable Generator", m: 1 }, { label: "Standby – Separately Derived", m: 1.8 }] },
+    ],
+  },
+  {
+    id: "required_outlets", label: "Required Outlets & Lighting (NEC 210)", icon: "◎", color: "#e8a87e",
+    services: [
+      // NEC 210.70 required lighting outlets — often missed on additions/remodels
+      { id: "lighting_stair",     label: "Stairway Lighting Outlet",          nec: "NEC 210.70(A)(2)", materialCost: 55,  laborCost: 170,  laborHours: 2,   unit: "outlet",  variants: [{ label: "New Box + Switch", m: 1 }, { label: "3-Way Stair Control", m: 1.5 }] },
+      { id: "lighting_attic",     label: "Attic / Crawl Space Lighting",      nec: "NEC 210.70(A)(3)", materialCost: 55,  laborCost: 213,  laborHours: 2.5, unit: "outlet",  variants: [{ label: "Single Fixture + Switch", m: 1 }, { label: "Multiple Fixtures", m: 1.5 }] },
+      { id: "lighting_basement",  label: "Basement / Utility Room Lighting",  nec: "NEC 210.70(A)(3)", materialCost: 55,  laborCost: 170,  laborHours: 2,   unit: "outlet",  variants: [{ label: "Single Fixture + Switch", m: 1 }, { label: "Multiple Fixtures", m: 1.4 }] },
+      { id: "lighting_garage_req",label: "Garage Required Lighting Outlet",   nec: "NEC 210.70(A)(2)", materialCost: 55,  laborCost: 170,  laborHours: 2,   unit: "outlet",  variants: [{ label: "Ceiling Fixture + Switch", m: 1 }, { label: "With Opener Circuit", m: 1.4 }] },
+      { id: "lighting_closet",    label: "Closet Lighting",                   nec: "NEC 410.16",       materialCost: 35,  laborCost: 85,   laborHours: 1,   unit: "fixture", variants: [{ label: "LED Surface Mount (Swap)", m: 1 }, { label: "New Box + Fixture", m: 1.8 }] },
+      { id: "hvac_outlet_req",    label: "HVAC Service Outlet (Required)",    nec: "NEC 210.63",       materialCost: 45,  laborCost: 255,  laborHours: 3,   unit: "outlet",  variants: [{ label: "Within 25 ft of Equipment", m: 1 }] },
+      { id: "panel_outlet_req",   label: "Panel Service Outlet (Required)",   nec: "NEC 210.64",       materialCost: 45,  laborCost: 213,  laborHours: 2.5, unit: "outlet",  variants: [{ label: "Within 50 ft of Panel", m: 1 }] },
+      { id: "bathroom_circuit",   label: "Bathroom Branch Circuit",           nec: "NEC 210.11(C)(3)", materialCost: 140, laborCost: 340,  laborHours: 4,   unit: "circuit", variants: [{ label: "Dedicated 20A Bathroom", m: 1 }, { label: "Shared Bath (max 2)", m: 1 }] },
+      { id: "kitchen_sabc",       label: "Kitchen Small Appliance Circuit",   nec: "NEC 210.52(B)",    materialCost: 140, laborCost: 340,  laborHours: 4,   unit: "circuit", variants: [{ label: "First 20A Circuit", m: 1 }, { label: "Second 20A Circuit (Required)", m: 1 }] },
+      { id: "laundry_circuit",    label: "Laundry Branch Circuit",            nec: "NEC 210.52(F)",    materialCost: 140, laborCost: 340,  laborHours: 4,   unit: "circuit", variants: [{ label: "20A Dedicated Laundry", m: 1 }] },
+      { id: "ev_ready_conduit",   label: "EV-Ready Garage Conduit (Required)", nec: "NEC 210.17",     materialCost: 180, laborCost: 340,  laborHours: 4,   unit: "unit",    variants: [{ label: "Conduit Stub to Panel", m: 1 }, { label: "Full Conduit + 40A Circuit", m: 1.8 }] },
+    ],
+  },
+  {
+    id: "inspection_permits", label: "Permits, Inspections & Load Calc", icon: "◻", color: "#b0b0c8",
+    services: [
+      { id: "permit_service",     label: "Electrical Permit (Service/Panel)", nec: "NEC 90.4",         materialCost: 0,   laborCost: 300,  laborHours: 2,   unit: "permit",  variants: [{ label: "Standard Permit Pull", m: 1 }, { label: "Expedited", m: 1.5 }] },
+      { id: "permit_general",     label: "Electrical Permit (General Work)",  nec: "NEC 90.4",         materialCost: 0,   laborCost: 150,  laborHours: 1,   unit: "permit",  variants: [{ label: "Standard", m: 1 }, { label: "Expedited", m: 1.5 }] },
+      { id: "load_calc",          label: "Load Calculation Service",          nec: "NEC 220.82",        materialCost: 0,   laborCost: 255,  laborHours: 3,   unit: "service", variants: [{ label: "Optional Method (220.82)", m: 1 }, { label: "Standard Method (220.42)", m: 1.2 }, { label: "With Written Report", m: 1.5 }] },
+      { id: "panel_labeling",     label: "Panel Circuit Labeling",            nec: "NEC 408.4",         materialCost: 15,  laborCost: 128,  laborHours: 1.5, unit: "panel",   variants: [{ label: "Existing Panel – Label Only", m: 1 }, { label: "Full Circuit Directory + Label", m: 1.5 }] },
+      { id: "inspection_final",   label: "Final Electrical Inspection",       nec: "NEC 110.3",         materialCost: 0,   laborCost: 170,  laborHours: 2,   unit: "service", variants: [{ label: "Standard Inspection", m: 1 }, { label: "Re-Inspection (corrections)", m: 0.75 }] },
+      { id: "whole_house_afci",   label: "Whole-House AFCI Upgrade",          nec: "NEC 210.12",        materialCost: 600, laborCost: 850,  laborHours: 10,  unit: "system",  variants: [{ label: "10–15 Circuits", m: 1 }, { label: "20+ Circuits", m: 1.5 }] },
+      { id: "whole_house_gfci",   label: "Whole-House GFCI Upgrade",          nec: "NEC 210.8",         materialCost: 400, laborCost: 595,  laborHours: 7,   unit: "system",  variants: [{ label: "Required Locations Only", m: 1 }, { label: "Full Home", m: 1.5 }] },
+      { id: "whole_house_surge",  label: "Whole-House Surge + AFCI/GFCI Package", nec: "NEC 230.67",   materialCost: 900, laborCost: 1190, laborHours: 14,  unit: "system",  variants: [{ label: "Standard Package", m: 1 }, { label: "With Panel Upgrade", m: 1.8 }] },
     ],
   },
 ];

@@ -1,1126 +1,1121 @@
-import React, { useState, useEffect, useRef } from "react";
-import NECReference from './NECReference';
+import { useState, useMemo } from "react";
 
-const REGIONS = {
-  "New York City, NY":2.15,"Albany, NY":1.38,"Binghamton, NY":1.0,
-  "Buffalo, NY":1.18,"Rochester, NY":1.22,"Syracuse, NY":1.12,
-  "Boston, MA":1.85,"Providence, RI":1.55,"Hartford, CT":1.6,
-  "Newark, NJ":1.9,"Philadelphia, PA":1.58,"Pittsburgh, PA":1.28,
-  "Baltimore, MD":1.48,"Washington DC":1.72,
-  "Atlanta, GA":1.28,"Charlotte, NC":1.18,"Raleigh, NC":1.22,
-  "Greensboro, NC":1.1,"Jacksonville, FL":1.12,"Tampa, FL":1.22,
-  "Orlando, FL":1.18,"Miami, FL":1.35,"Nashville, TN":1.25,
-  "Memphis, TN":0.98,"Louisville, KY":1.02,"Richmond, VA":1.22,
-  "Virginia Beach, VA":1.18,"New Orleans, LA":1.08,
-  "Chicago, IL":1.65,"Detroit, MI":1.25,"Minneapolis, MN":1.35,
-  "Columbus, OH":1.12,"Cincinnati, OH":1.08,"Cleveland, OH":1.15,
-  "Indianapolis, IN":1.08,"St. Louis, MO":1.12,"Kansas City, MO":1.12,
-  "Milwaukee, WI":1.25,"Omaha, NE":1.0,"Des Moines, IA":1.02,
-  "Houston, TX":1.12,"Dallas, TX":1.18,"Austin, TX":1.28,
-  "San Antonio, TX":1.08,"El Paso, TX":0.92,"Oklahoma City, OK":0.98,
-  "Tulsa, OK":0.98,"Albuquerque, NM":1.02,"Tucson, AZ":1.02,
-  "Los Angeles, CA":1.95,"San Francisco, CA":2.25,"San Diego, CA":1.85,
-  "Sacramento, CA":1.65,"Phoenix, AZ":1.18,"Las Vegas, NV":1.25,
-  "Denver, CO":1.45,"Salt Lake City, UT":1.22,"Portland, OR":1.55,
-  "Seattle, WA":1.82,"Spokane, WA":1.22,"Boise, ID":1.15,
-  "Anchorage, AK":1.85,"Honolulu, HI":2.1,"Rural/Small Town":0.88,
-};
-
-const CATS = {
-  "Wiring Devices":{
-    receptacles:   {low:150,high:350,label:"Receptacles (Outlets)",           unit:"each",   nec:"210.52",mat:12, hours:1.0},
-    gfciOutlet:    {low:150,high:350,label:"GFCI Outlets",                    unit:"each",   nec:"210.8", mat:22, hours:1.0},
-    afciOutlet:    {low:175,high:375,label:"AFCI Outlets",                    unit:"each",   nec:"210.12",mat:42, hours:1.0},
-    switches:      {low:150,high:200,label:"Single-Pole Switches",            unit:"each",   nec:"404.2", mat:10, hours:0.75},
-    threewaySwitch:{low:175,high:250,label:"3-Way Switches",                  unit:"each",   nec:"404.2", mat:18, hours:1.25},
-    dimmers:       {low:175,high:260,label:"Dimmer Switches",                 unit:"each",   nec:"404.14",mat:30, hours:1.0},
-    outdoorOutlet: {low:180,high:350,label:"Outdoor GFCI Outlets",            unit:"each",   nec:"210.8(A)(3)",mat:30,hours:1.5},
-    usbOutlet:     {low:175,high:310,label:"USB Combo Outlets",               unit:"each",   nec:"210.52",mat:35, hours:1.0},
-    tamperResist:  {low:150,high:300,label:"Tamper-Resistant Receptacles",    unit:"each",   nec:"406.12",mat:15, hours:0.75},
-    evCharger:     {low:750,high:1800,label:"EV Charger Level 2 (240V)",      unit:"each",   nec:"625.40",mat:220,hours:5.0},
+// ─── CATALOG: each service has separate materialCost + laborCost ──────────────
+// materialCost = typical material cost (electrician supplies)
+// laborCost    = labor only (no materials)
+// variants multiply the TOTAL of both
+const CATEGORIES = [
+  {
+    id: "service_entrance", label: "Service Entrance & Panel", icon: "▦", color: "#e8c97a",
+    services: [
+      { id: "panel_100",        label: "Panel Upgrade – 100A",              nec: "NEC 230.79(C)",   materialCost: 650,  laborCost: 550,  laborHours: 6,   unit: "panel",   variants: [{ label: "Standard", m: 1 }, { label: "Main Breaker", m: 1.15 }] },
+      { id: "panel_200",        label: "Panel Upgrade – 200A",              nec: "NEC 230.79(D)",   materialCost: 1200, laborCost: 900,  laborHours: 10,  unit: "panel",   variants: [{ label: "Standard", m: 1 }, { label: "Main Breaker", m: 1.15 }, { label: "Smart Panel", m: 1.6 }] },
+      { id: "panel_400",        label: "Panel Upgrade – 400A",              nec: "NEC 230.79",      materialCost: 2800, laborCost: 1500, laborHours: 16,  unit: "panel",   variants: [{ label: "Standard", m: 1 }, { label: "With Meter Stack", m: 1.3 }] },
+      { id: "sub_panel",        label: "Sub-Panel Install",                 nec: "NEC 225.30",      materialCost: 500,  laborCost: 400,  laborHours: 6,   unit: "panel",   variants: [{ label: "60A", m: 1 }, { label: "100A", m: 1.2 }, { label: "150A", m: 1.4 }] },
+      { id: "breaker_single",   label: "Breaker – Single Pole",             nec: "NEC 240.6",       materialCost: 60,   laborCost: 90,   laborHours: 1,   unit: "breaker", variants: [{ label: "15A", m: 1 }, { label: "20A", m: 1.05 }, { label: "AFCI", m: 1.4 }, { label: "GFCI", m: 1.4 }, { label: "Dual AFCI/GFCI", m: 1.6 }] },
+      { id: "breaker_double",   label: "Breaker – Double Pole",             nec: "NEC 240.6",       materialCost: 90,   laborCost: 110,  laborHours: 1.5, unit: "breaker", variants: [{ label: "30A", m: 1 }, { label: "40A", m: 1.1 }, { label: "50A", m: 1.2 }, { label: "60A", m: 1.3 }] },
+      { id: "surge_whole",      label: "Whole-Home Surge Protector",        nec: "NEC 230.67",      materialCost: 180,  laborCost: 160,  laborHours: 2,   unit: "unit",    variants: [{ label: "Type 1", m: 1 }, { label: "Type 2", m: 0.9 }, { label: "Type 1+2 Combo", m: 1.2 }] },
+      { id: "meter_socket",     label: "Meter Socket Replacement",          nec: "NEC 230.66",      materialCost: 200,  laborCost: 200,  laborHours: 3,   unit: "unit",    variants: [{ label: "100A", m: 1 }, { label: "200A", m: 1.2 }] },
+      { id: "grounding",        label: "Grounding Electrode System",        nec: "NEC 250.50",      materialCost: 120,  laborCost: 180,  laborHours: 3,   unit: "system",  variants: [{ label: "Ground Rod", m: 1 }, { label: "Rod + Plate", m: 1.4 }, { label: "Ufer Ground", m: 1.8 }] },
+      { id: "bonding",          label: "Bonding – Water / Gas Pipe",        nec: "NEC 250.104",     materialCost: 40,   laborCost: 110,  laborHours: 1.5, unit: "each",    variants: [{ label: "Water Pipe", m: 1 }, { label: "Gas Pipe", m: 1 }, { label: "Both", m: 1.6 }] },
+    ],
   },
-  "Lighting":{
-    snapLED:       {low:125,high:300,label:"Snap-In LED Recessed Lights",     unit:"each",   nec:"410.116",mat:28,hours:1.0},
-    canLight:      {low:150,high:300,label:"Traditional Can Lights",          unit:"each",   nec:"410.116",mat:40,hours:1.5},
-    wallLight:     {low:150,high:350,label:"Wall Sconces / Light Fixtures",   unit:"each",   nec:"410.36", mat:45,hours:1.25},
-    ceilingFan:    {low:250,high:600,label:"Ceiling Fans (with light)",       unit:"each",   nec:"314.27", mat:85,hours:2.0},
-    chandelierLight:{low:300,high:2000,label:"Chandelier / Heavy Fixture",    unit:"each",   nec:"314.27(D)",mat:120,hours:3.0},
-    undercabinet:  {low:150,high:350,label:"Under-Cabinet Lighting",          unit:"each",   nec:"410.36", mat:45,hours:1.25},
-    outdoorLight:  {low:150,high:350,label:"Outdoor Light Fixtures",          unit:"each",   nec:"410.10", mat:55,hours:1.5},
-    motionLight:   {low:175,high:400,label:"Motion Sensor Lights",            unit:"each",   nec:"410.10", mat:65,hours:1.5},
+  {
+    id: "circuits", label: "Branch Circuits & Wiring", icon: "⌁", color: "#7eb8e8",
+    services: [
+      { id: "circuit_15",       label: "New 15A Circuit",                   nec: "NEC 210.11",      materialCost: 120,  laborCost: 200,  laborHours: 3.5, unit: "circuit", variants: [{ label: "Standard", m: 1 }, { label: "AFCI Required", m: 1.2 }, { label: "Long Run (50+ ft)", m: 1.4 }] },
+      { id: "circuit_20",       label: "New 20A Circuit",                   nec: "NEC 210.11",      materialCost: 140,  laborCost: 230,  laborHours: 4,   unit: "circuit", variants: [{ label: "Standard", m: 1 }, { label: "Kitchen/Bath", m: 1.15 }, { label: "AFCI Required", m: 1.25 }] },
+      { id: "circuit_30",       label: "New 240V Circuit – 30A",            nec: "NEC 210.19",      materialCost: 180,  laborCost: 280,  laborHours: 5,   unit: "circuit", variants: [{ label: "Dryer", m: 1 }, { label: "HVAC", m: 1.1 }, { label: "Hot Tub/Spa", m: 1.3 }] },
+      { id: "circuit_50",       label: "New 240V Circuit – 50A",            nec: "NEC 210.19",      materialCost: 220,  laborCost: 330,  laborHours: 6,   unit: "circuit", variants: [{ label: "Range/Oven", m: 1 }, { label: "EV Charger", m: 1.1 }, { label: "Pool Equipment", m: 1.2 }] },
+      { id: "circuit_dedicated",label: "Dedicated Appliance Circuit",       nec: "NEC 210.52",      materialCost: 130,  laborCost: 220,  laborHours: 4,   unit: "circuit", variants: [{ label: "Refrigerator", m: 1 }, { label: "Microwave", m: 1 }, { label: "Dishwasher", m: 1 }, { label: "Disposal", m: 1 }] },
+      { id: "rewire_room",      label: "Room Rewire",                       nec: "NEC 310.15",      materialCost: 350,  laborCost: 500,  laborHours: 8,   unit: "room",    variants: [{ label: "Bedroom", m: 1 }, { label: "Living Room", m: 1.2 }, { label: "Kitchen", m: 1.8 }, { label: "Bathroom", m: 1.3 }] },
+      { id: "knob_tube",        label: "Knob & Tube Removal/Replace",       nec: "NEC 394.12",      materialCost: 600,  laborCost: 900,  laborHours: 14,  unit: "room",    variants: [{ label: "Single Room", m: 1 }, { label: "Per Floor", m: 3 }, { label: "Whole House", m: 7 }] },
+      { id: "aluminum_wiring",  label: "Aluminum Wiring Remediation",       nec: "NEC 310.14(B)",   materialCost: 50,   laborCost: 120,  laborHours: 2,   unit: "outlet",  variants: [{ label: "CO/ALR Device", m: 1 }, { label: "Pigtail w/ Marrette", m: 1.3 }] },
+      { id: "low_voltage",      label: "Low-Voltage / Data Run",            nec: "NEC 725.41",      materialCost: 60,   laborCost: 120,  laborHours: 2,   unit: "run",     variants: [{ label: "Cat6 Ethernet", m: 1 }, { label: "Coax", m: 0.9 }, { label: "Speaker Wire", m: 0.8 }, { label: "HDMI/AV", m: 1.1 }] },
+    ],
   },
-  "Panels & Service":{
-    panel100:      {low:1500,high:3000,label:"100A Panel Replacement",        unit:"flat",   nec:"230.79",mat:450,hours:10},
-    panel200:      {low:2000,high:4000,label:"200A Panel Replacement",        unit:"flat",   nec:"230.79",mat:650,hours:12},
-    panel400:      {low:4000,high:8000,label:"400A Panel Upgrade",            unit:"flat",   nec:"230.79",mat:1400,hours:18},
-    subpanel100:   {low:1000,high:2500,label:"100A Subpanel Install",         unit:"flat",   nec:"225.30",mat:380,hours:8},
-    subpanel200:   {low:1500,high:3500,label:"200A Subpanel Install",         unit:"flat",   nec:"225.30",mat:550,hours:10},
-    panelCircuit:  {low:200,high:500,label:"New Branch Circuit at Panel",     unit:"each",   nec:"210.11",mat:55, hours:2.5},
-    meterBase:     {low:500,high:1200,label:"Meter Base Replacement",         unit:"flat",   nec:"230.66",mat:180,hours:5},
-    groundRods:    {low:400,high:800,label:"Grounding Electrode System",      unit:"flat",   nec:"250.50",mat:90, hours:4},
-    surgeProtector:{low:300,high:600,label:"Whole-Home Surge Protector",      unit:"each",   nec:"230.67",mat:130,hours:2},
-    exteriorDisconn:{low:400,high:900,label:"Exterior Emergency Disconnect",  unit:"flat",   nec:"230.85",mat:150,hours:3},
+  {
+    id: "receptacles", label: "Receptacles & Outlets", icon: "⬡", color: "#a8e87e",
+    services: [
+      { id: "outlet_standard",  label: "Standard Duplex Outlet",            nec: "NEC 210.52",      materialCost: 18,   laborCost: 55,   laborHours: 0.6, unit: "outlet",  variants: [{ label: "15A", m: 1 }, { label: "20A", m: 1.1 }] },
+      { id: "outlet_gfci",      label: "GFCI Outlet",                       nec: "NEC 210.8",       materialCost: 38,   laborCost: 65,   laborHours: 0.75,unit: "outlet",  variants: [{ label: "15A", m: 1 }, { label: "20A", m: 1.1 }, { label: "Weather Resistant", m: 1.2 }] },
+      { id: "outlet_afci",      label: "AFCI Outlet",                       nec: "NEC 210.12",      materialCost: 55,   laborCost: 65,   laborHours: 0.75,unit: "outlet",  variants: [{ label: "15A", m: 1 }, { label: "20A", m: 1.1 }] },
+      { id: "outlet_usb",       label: "USB / Smart Outlet",                nec: "NEC 210.52",      materialCost: 55,   laborCost: 65,   laborHours: 0.75,unit: "outlet",  variants: [{ label: "USB-A/C Combo", m: 1 }, { label: "Smart Wi-Fi", m: 1.4 }, { label: "Tamper Resistant", m: 1.1 }] },
+      { id: "outlet_240",       label: "240V Outlet",                       nec: "NEC 210.19",      materialCost: 55,   laborCost: 120,  laborHours: 1.5, unit: "outlet",  variants: [{ label: "NEMA 6-20 (Welder)", m: 1 }, { label: "NEMA 14-30 (Dryer)", m: 1.1 }, { label: "NEMA 14-50 (RV/EV)", m: 1.2 }] },
+      { id: "outlet_floor",     label: "Floor Outlet",                      nec: "NEC 314.27(B)",   materialCost: 85,   laborCost: 160,  laborHours: 2,   unit: "outlet",  variants: [{ label: "Standard", m: 1 }, { label: "With Cover", m: 1.2 }] },
+      { id: "outlet_exterior",  label: "Exterior Outlet",                   nec: "NEC 210.52(E)",   materialCost: 45,   laborCost: 120,  laborHours: 1.5, unit: "outlet",  variants: [{ label: "In-Use Cover", m: 1 }, { label: "WR + In-Use Cover", m: 1.2 }, { label: "Recessed", m: 1.4 }] },
+      { id: "outlet_countertop",label: "Countertop Popup Outlet",           nec: "NEC 210.52(C)",   materialCost: 120,  laborCost: 160,  laborHours: 2.5, unit: "outlet",  variants: [{ label: "Standard", m: 1 }, { label: "With USB", m: 1.2 }, { label: "Wireless Charger", m: 1.5 }] },
+      { id: "outlet_ev",        label: "EV Charger / EVSE",                 nec: "NEC 625.40",      materialCost: 280,  laborCost: 320,  laborHours: 5,   unit: "unit",    variants: [{ label: "NEMA 14-50 Outlet", m: 1 }, { label: "Level 2 Hardwire", m: 1.5 }, { label: "Smart EVSE", m: 1.8 }] },
+    ],
   },
-  "Appliance Circuits":{
-    dryer240:      {low:250,high:600,label:"Dryer Circuit (240V / 30A)",      unit:"each",   nec:"210.11(C)(2)",mat:90,hours:3},
-    range240:      {low:300,high:700,label:"Range/Oven Circuit (240V / 50A)", unit:"each",   nec:"210.19",mat:90, hours:3},
-    acCircuit:     {low:250,high:600,label:"A/C Dedicated Circuit",           unit:"each",   nec:"440.62",mat:80, hours:2.5},
-    hotTub:        {low:1000,high:2500,label:"Hot Tub / Spa Circuit",         unit:"each",   nec:"680.42",mat:280,hours:8},
-    pool:          {low:1500,high:4000,label:"Pool Electrical (bonding+circuit)",unit:"flat",nec:"680.26",mat:450,hours:14},
-    wellPump:      {low:500,high:1200,label:"Well Pump Circuit",              unit:"each",   nec:"430.22",mat:110,hours:4},
-    generator:     {low:2000,high:5000,label:"Generator + Transfer Switch",   unit:"flat",   nec:"702.12",mat:900,hours:14},
-    solarTie:      {low:1000,high:3000,label:"Solar PV Interconnect",         unit:"flat",   nec:"705.12",mat:350,hours:10},
-    batteryBackup: {low:3000,high:8000,label:"Battery Backup System",         unit:"flat",   nec:"702.4", mat:1500,hours:16},
+  {
+    id: "switches", label: "Switches & Controls", icon: "◈", color: "#e87eb8",
+    services: [
+      { id: "switch_single",    label: "Single Pole Switch",                nec: "NEC 404.2",       materialCost: 14,   laborCost: 48,   laborHours: 0.5, unit: "switch",  variants: [{ label: "Standard", m: 1 }, { label: "Decorator", m: 1.05 }, { label: "Lighted", m: 1.15 }] },
+      { id: "switch_3way",      label: "3-Way Switch",                      nec: "NEC 404.2",       materialCost: 24,   laborCost: 80,   laborHours: 1,   unit: "switch",  variants: [{ label: "Standard", m: 1 }, { label: "Decorator", m: 1.1 }] },
+      { id: "switch_4way",      label: "4-Way Switch",                      nec: "NEC 404.2",       materialCost: 35,   laborCost: 95,   laborHours: 1.25,unit: "switch",  variants: [{ label: "Standard", m: 1 }, { label: "Decorator", m: 1.1 }] },
+      { id: "dimmer_single",    label: "Dimmer – Single Pole",              nec: "NEC 404.14",      materialCost: 35,   laborCost: 75,   laborHours: 0.75,unit: "switch",  variants: [{ label: "Standard", m: 1 }, { label: "LED Compatible", m: 1.15 }, { label: "Smart/Wi-Fi", m: 1.6 }] },
+      { id: "dimmer_3way",      label: "Dimmer – 3-Way",                    nec: "NEC 404.14",      materialCost: 55,   laborCost: 95,   laborHours: 1.25,unit: "switch",  variants: [{ label: "Standard", m: 1 }, { label: "Smart/Wi-Fi", m: 1.6 }] },
+      { id: "switch_smart",     label: "Smart Switch / Scene Controller",   nec: "NEC 404.2",       materialCost: 85,   laborCost: 80,   laborHours: 1,   unit: "switch",  variants: [{ label: "Wi-Fi", m: 1 }, { label: "Z-Wave/Zigbee", m: 1.2 }, { label: "Lutron Caseta", m: 1.3 }] },
+      { id: "gfci_switch",      label: "GFCI Combo Switch",                 nec: "NEC 210.8",       materialCost: 45,   laborCost: 75,   laborHours: 0.75,unit: "switch",  variants: [{ label: "Standard", m: 1 }] },
+      { id: "occupancy_sensor", label: "Occupancy / Motion Switch",         nec: "NEC 404.2",       materialCost: 55,   laborCost: 80,   laborHours: 1,   unit: "switch",  variants: [{ label: "Wall Switch", m: 1 }, { label: "Ceiling Sensor", m: 1.3 }] },
+      { id: "timer_switch",     label: "Timer Switch",                      nec: "NEC 404.2",       materialCost: 35,   laborCost: 65,   laborHours: 0.75,unit: "switch",  variants: [{ label: "Mechanical", m: 1 }, { label: "Digital/Programmable", m: 1.3 }, { label: "Outdoor Intermatic", m: 1.2 }] },
+    ],
   },
-  "Safety Devices":{
-    smokeDetector: {low:100,high:200,label:"Smoke Detectors (hardwired)",     unit:"each",   nec:"760.32",mat:28, hours:1.0},
-    coDetector:    {low:100,high:200,label:"CO Detectors (hardwired)",        unit:"each",   nec:"760.32",mat:32, hours:1.0},
-    comboDet:      {low:120,high:220,label:"Combo Smoke/CO Detectors",        unit:"each",   nec:"760.32",mat:45, hours:1.0},
-    afciBreaker:   {low:120,high:200,label:"AFCI Breakers",                   unit:"each",   nec:"210.12",mat:50, hours:1.0},
-    gfciBreaker:   {low:120,high:200,label:"GFCI Breakers",                   unit:"each",   nec:"210.8", mat:50, hours:1.0},
+  {
+    id: "lighting", label: "Lighting & Fixtures", icon: "◎", color: "#e8b87e",
+    services: [
+      { id: "light_ceiling",    label: "Ceiling Light Fixture",             nec: "NEC 314.27",      materialCost: 55,   laborCost: 75,   laborHours: 1.25,unit: "fixture", variants: [{ label: "Flush Mount", m: 1 }, { label: "Semi-Flush", m: 1.1 }, { label: "Close-to-Ceiling", m: 1 }] },
+      { id: "light_recessed",   label: "Recessed Lighting (Can)",           nec: "NEC 410.116",     materialCost: 45,   laborCost: 80,   laborHours: 1.5, unit: "fixture", variants: [{ label: "New Construction", m: 1 }, { label: "Remodel/Retrofit", m: 1.3 }, { label: "IC Rated", m: 1.1 }, { label: "Airtight AT Rated", m: 1.2 }] },
+      { id: "light_pendant",    label: "Pendant Light",                     nec: "NEC 410.36",      materialCost: 80,   laborCost: 110,  laborHours: 2,   unit: "fixture", variants: [{ label: "Standard", m: 1 }, { label: "Over Island", m: 1.2 }, { label: "Heavy/Oversized", m: 1.5 }] },
+      { id: "light_chandelier", label: "Chandelier",                        nec: "NEC 410.36",      materialCost: 120,  laborCost: 200,  laborHours: 3.5, unit: "fixture", variants: [{ label: "Standard (<50 lbs)", m: 1 }, { label: "Heavy (50-100 lbs)", m: 1.5 }, { label: "Vaulted/High Ceiling", m: 1.8 }] },
+      { id: "light_fan",        label: "Ceiling Fan",                       nec: "NEC 314.27(D)",   materialCost: 100,  laborCost: 130,  laborHours: 2.5, unit: "fixture", variants: [{ label: "Standard", m: 1 }, { label: "With Light Kit", m: 1.1 }, { label: "Remote/Smart", m: 1.25 }, { label: "Vaulted Mount", m: 1.3 }] },
+      { id: "light_track",      label: "Track Lighting",                    nec: "NEC 410.151",     materialCost: 90,   laborCost: 100,  laborHours: 2,   unit: "run",     variants: [{ label: "4 ft", m: 1 }, { label: "8 ft", m: 1.5 }, { label: "Flexible/Monorail", m: 1.8 }] },
+      { id: "light_undercab",   label: "Under-Cabinet Lighting",            nec: "NEC 411.2",       materialCost: 70,   laborCost: 90,   laborHours: 2,   unit: "run",     variants: [{ label: "LED Strip (per 4 ft)", m: 1 }, { label: "Puck Lights", m: 0.9 }, { label: "Hardwired LED Bar", m: 1.3 }] },
+      { id: "light_exterior",   label: "Exterior / Porch Light",            nec: "NEC 410.10",      materialCost: 55,   laborCost: 90,   laborHours: 1.5, unit: "fixture", variants: [{ label: "Wall Sconce", m: 1 }, { label: "Flood/Security", m: 1.2 }, { label: "Motion Activated", m: 1.3 }, { label: "Post/Pier Mount", m: 1.6 }] },
+      { id: "light_vanity",     label: "Bathroom Vanity Light",             nec: "NEC 410.10(D)",   materialCost: 60,   laborCost: 80,   laborHours: 1.5, unit: "fixture", variants: [{ label: "Standard Bar", m: 1 }, { label: "Hollywood/Globe", m: 1.1 }, { label: "Lighted Mirror", m: 1.4 }] },
+      { id: "exhaust_fan",      label: "Bathroom Exhaust Fan",              nec: "NEC 210.11",      materialCost: 80,   laborCost: 120,  laborHours: 2.5, unit: "unit",    variants: [{ label: "Standard", m: 1 }, { label: "With Light", m: 1.2 }, { label: "With Heater", m: 1.4 }, { label: "High-CFM/Quiet", m: 1.3 }] },
+      { id: "led_retrofit",     label: "LED Retrofit / Recessed Kit",       nec: "NEC 410.6",       materialCost: 20,   laborCost: 18,   laborHours: 0.2, unit: "fixture", variants: [{ label: "Standard Bulb Swap", m: 1 }, { label: "Recessed Retrofit Kit", m: 2.5 }] },
+      { id: "landscape_light",  label: "Landscape / Low-Voltage Lighting",  nec: "NEC 411.2",       materialCost: 120,  laborCost: 140,  laborHours: 3,   unit: "zone",    variants: [{ label: "Low-Voltage Kit", m: 1 }, { label: "Hardwired Line Voltage", m: 1.8 }, { label: "Solar Accent", m: 0.6 }] },
+    ],
   },
-  "Wiring & Rough-In":{
-    rewireRoom:    {low:500,high:1200,label:"Rewire Single Room",             unit:"each",   nec:"310.12",mat:180,hours:6},
-    rewireHome:    {low:10000,high:30000,label:"Full Home Rewire",            unit:"flat",   nec:"310.12",mat:4000,hours:100},
-    aluminumFix:   {low:200,high:400,label:"Aluminum Wiring Fix (per outlet)",unit:"each",  nec:"110.14",mat:35, hours:2.0},
-    lowVoltage:    {low:100,high:200,label:"Low Voltage (data/cable/phone)",  unit:"each",   nec:"800.24",mat:22, hours:1.0},
-    conduitRun:    {low:8,  high:15, label:"Conduit Run (per linear foot)",   unit:"lin ft", nec:"358.10",mat:5,  hours:0.1},
-    wireRun:       {low:4,  high:10, label:"Wire Pull (per linear foot)",     unit:"lin ft", nec:"310.15",mat:1.5,hours:0.04},
-    junctionBox:   {low:100,high:250,label:"Junction Box (installed)",        unit:"each",   nec:"314.29",mat:10, hours:1.0},
+  {
+    id: "safety", label: "Safety & Detection", icon: "◉", color: "#e87e7e",
+    services: [
+      { id: "smoke_detector",   label: "Smoke Detector",                    nec: "NEC 760.41",      materialCost: 35,   laborCost: 55,   laborHours: 0.75,unit: "unit",    variants: [{ label: "Battery Backup", m: 1 }, { label: "Hardwired", m: 1 }, { label: "Hardwired + Interconnect", m: 1.3 }] },
+      { id: "co_detector",      label: "CO Detector",                       nec: "NEC 760.41",      materialCost: 40,   laborCost: 60,   laborHours: 0.75,unit: "unit",    variants: [{ label: "Battery", m: 1 }, { label: "Hardwired", m: 1.1 }, { label: "Combo Smoke/CO", m: 1.2 }] },
+      { id: "smoke_co_combo",   label: "Smoke + CO Combo (Hardwired)",      nec: "NEC 210.12",      materialCost: 65,   laborCost: 75,   laborHours: 1,   unit: "unit",    variants: [{ label: "Interconnected", m: 1 }, { label: "Smart (Nest/Ring)", m: 1.5 }] },
+      { id: "arc_fault",        label: "AFCI Protection – Retrofit",        nec: "NEC 210.12",      materialCost: 70,   laborCost: 110,  laborHours: 1.5, unit: "circuit", variants: [{ label: "Breaker Type", m: 1 }, { label: "Outlet Type", m: 0.9 }] },
+      { id: "gfci_protection",  label: "GFCI Protection – Retrofit",        nec: "NEC 210.8",       materialCost: 38,   laborCost: 80,   laborHours: 1,   unit: "circuit", variants: [{ label: "Breaker Type", m: 1 }, { label: "Outlet Type (Feeds Multiple)", m: 0.85 }] },
+      { id: "tamper_resistant", label: "Tamper-Resistant Receptacles",      nec: "NEC 406.12",      materialCost: 20,   laborCost: 55,   laborHours: 0.6, unit: "outlet",  variants: [{ label: "Standard TR", m: 1 }, { label: "TR + WR", m: 1.15 }] },
+      { id: "surge_individual", label: "Point-of-Use Surge Protection",     nec: "NEC 230.67",      materialCost: 30,   laborCost: 50,   laborHours: 0.5, unit: "unit",    variants: [{ label: "Outlet Type", m: 1 }, { label: "Hardwired", m: 1.5 }] },
+    ],
   },
-  "Outdoor & Specialty":{
-    outdoorPanel:  {low:800,high:2000,label:"Outdoor Subpanel",               unit:"flat",  nec:"225.30", mat:250,hours:8},
-    landscape:     {low:400,high:1200,label:"Landscape Lighting System",      unit:"flat",   nec:"411.3",  mat:180,hours:6},
-    shed:          {low:800,high:2000,label:"Shed / Detached Garage Electric",unit:"flat",   nec:"225.30", mat:250,hours:8},
-    securityCamera:{low:150,high:300,label:"Security Camera Power",           unit:"each",   nec:"210.52", mat:25, hours:1.25},
-    doorbell:      {low:150,high:350,label:"Doorbell / Video Doorbell",       unit:"each",   nec:"725.3",  mat:30, hours:1.5},
-    poolLight:     {low:400,high:1000,label:"Pool / Spa Light",               unit:"each",   nec:"680.23", mat:200,hours:4},
+  {
+    id: "hvac_appliance", label: "HVAC & Appliance Connections", icon: "⧖", color: "#b87ee8",
+    services: [
+      { id: "ac_disconnect",    label: "AC Disconnect / Whip",              nec: "NEC 440.14",      materialCost: 120,  laborCost: 180,  laborHours: 3,   unit: "unit",    variants: [{ label: "Non-Fused", m: 1 }, { label: "Fused", m: 1.2 }, { label: "60A", m: 1 }, { label: "100A", m: 1.3 }] },
+      { id: "hvac_circuit",     label: "HVAC Dedicated Circuit",            nec: "NEC 440.32",      materialCost: 180,  laborCost: 280,  laborHours: 5,   unit: "unit",    variants: [{ label: "Mini Split", m: 1 }, { label: "Central AC", m: 1.2 }, { label: "Heat Pump", m: 1.2 }, { label: "Electric Furnace", m: 1.4 }] },
+      { id: "dryer_hookup",     label: "Dryer Hookup / Connection",         nec: "NEC 220.54",      materialCost: 55,   laborCost: 145,  laborHours: 2,   unit: "unit",    variants: [{ label: "3-Wire NEMA 10-30", m: 1 }, { label: "4-Wire NEMA 14-30", m: 1 }, { label: "Gas Dryer Outlet Only", m: 0.7 }] },
+      { id: "range_hookup",     label: "Range / Oven Hookup",               nec: "NEC 220.55",      materialCost: 65,   laborCost: 160,  laborHours: 2,   unit: "unit",    variants: [{ label: "Freestanding Range", m: 1 }, { label: "Wall Oven", m: 1.2 }, { label: "Cooktop + Oven", m: 1.4 }] },
+      { id: "water_heater",     label: "Electric Water Heater Circuit",     nec: "NEC 422.11",      materialCost: 150,  laborCost: 230,  laborHours: 4,   unit: "unit",    variants: [{ label: "Standard Tank", m: 1 }, { label: "Tankless/On-Demand", m: 1.5 }] },
+      { id: "generator_switch", label: "Generator Transfer Switch",         nec: "NEC 702.6",       materialCost: 450,  laborCost: 500,  laborHours: 8,   unit: "unit",    variants: [{ label: "Manual Transfer", m: 1 }, { label: "Interlock Kit", m: 0.7 }, { label: "Auto Transfer (ATS)", m: 2 }] },
+      { id: "generator_inlet",  label: "Generator Inlet Box",               nec: "NEC 702.7",       materialCost: 120,  laborCost: 180,  laborHours: 3,   unit: "unit",    variants: [{ label: "30A Inlet", m: 1 }, { label: "50A Inlet", m: 1.2 }] },
+      { id: "pool_equipment",   label: "Pool / Spa Equipment Circuit",      nec: "NEC 680.21",      materialCost: 250,  laborCost: 380,  laborHours: 6,   unit: "unit",    variants: [{ label: "Pump Motor", m: 1 }, { label: "Heater", m: 1.3 }, { label: "Full Equipment Pad", m: 2 }] },
+    ],
   },
+  {
+    id: "smart_home", label: "Structured Wiring & Smart Home", icon: "⬡", color: "#7ee8d4",
+    services: [
+      { id: "data_panel",       label: "Structured Media / Data Panel",     nec: "NEC 800.133",     materialCost: 220,  laborCost: 300,  laborHours: 5,   unit: "unit",    variants: [{ label: "Basic", m: 1 }, { label: "With Network Switch", m: 1.4 }] },
+      { id: "cat6_drop",        label: "Cat6 Home Run (Per Drop)",          nec: "NEC 725.41",      materialCost: 60,   laborCost: 120,  laborHours: 2,   unit: "drop",    variants: [{ label: "To Patch Panel", m: 1 }, { label: "Terminated Both Ends", m: 1.1 }] },
+      { id: "coax_drop",        label: "Coax Run (Per Drop)",               nec: "NEC 820.133",     materialCost: 35,   laborCost: 95,   laborHours: 1.5, unit: "drop",    variants: [{ label: "Standard", m: 1 }, { label: "RG6 Quad Shield", m: 1.1 }] },
+      { id: "doorbell",         label: "Doorbell / Video Doorbell",         nec: "NEC 725.41",      materialCost: 60,   laborCost: 90,   laborHours: 1.5, unit: "unit",    variants: [{ label: "Traditional Chime", m: 1 }, { label: "Ring/Nest Wired", m: 1.2 }, { label: "New Circuit Required", m: 2 }] },
+      { id: "intercom",         label: "Intercom System",                   nec: "NEC 725.41",      materialCost: 180,  laborCost: 230,  laborHours: 4,   unit: "unit",    variants: [{ label: "Basic Door Intercom", m: 1 }, { label: "Multi-Room", m: 2 }] },
+      { id: "security_prewire", label: "Security System Pre-Wire",          nec: "NEC 760.41",      materialCost: 120,  laborCost: 240,  laborHours: 4,   unit: "zone",    variants: [{ label: "Per Zone", m: 1 }, { label: "Full House (8 zones)", m: 5 }] },
+      { id: "whole_audio",      label: "Whole-Home Audio Pre-Wire",         nec: "NEC 725.41",      materialCost: 80,   laborCost: 130,  laborHours: 2.5, unit: "room",    variants: [{ label: "Stereo (2 speakers)", m: 1 }, { label: "Surround (5 drops)", m: 2 }] },
+    ],
+  },
+  {
+    id: "outdoor", label: "Outdoor, Garage & Specialty", icon: "◫", color: "#e8d47e",
+    services: [
+      { id: "garage_circuit",   label: "Garage Circuit",                    nec: "NEC 210.52(G)",   materialCost: 140,  laborCost: 210,  laborHours: 4,   unit: "circuit", variants: [{ label: "20A General", m: 1 }, { label: "240V Workshop", m: 1.4 }, { label: "EV Charger", m: 1.5 }] },
+      { id: "outdoor_subpanel", label: "Outdoor Sub-Panel (Detached)",      nec: "NEC 225.30",      materialCost: 600,  laborCost: 700,  laborHours: 10,  unit: "unit",    variants: [{ label: "60A Overhead", m: 1 }, { label: "100A Overhead", m: 1.3 }, { label: "100A Underground", m: 1.5 }] },
+      { id: "gfci_outdoor",     label: "Outdoor GFCI Outlet",               nec: "NEC 210.8(A)(3)", materialCost: 45,   laborCost: 130,  laborHours: 1.5, unit: "outlet",  variants: [{ label: "Wall Mount", m: 1 }, { label: "Deck Box", m: 1.2 }, { label: "In-Ground/Pedestal", m: 1.6 }] },
+      { id: "flood_light",      label: "Security / Flood Light",            nec: "NEC 410.10",      materialCost: 65,   laborCost: 100,  laborHours: 2,   unit: "fixture", variants: [{ label: "Motion Flood", m: 1 }, { label: "Camera + Light Combo", m: 1.3 }, { label: "Dusk-to-Dawn", m: 1.1 }] },
+      { id: "conduit_run",      label: "Conduit Run (per 10 ft)",           nec: "NEC 358.26",      materialCost: 35,   laborCost: 55,   laborHours: 1,   unit: "10 ft",   variants: [{ label: "EMT", m: 1 }, { label: "PVC Schedule 40", m: 0.85 }, { label: "Rigid/GRC", m: 1.4 }, { label: "Underground Direct Burial", m: 1.6 }] },
+      { id: "solar_ready",      label: "Solar / Battery Ready Conduit",     nec: "NEC 690.12",      materialCost: 280,  laborCost: 340,  laborHours: 6,   unit: "unit",    variants: [{ label: "Panel Conduit Stub", m: 1 }, { label: "Full Conduit + Junction", m: 1.5 }] },
+      { id: "hot_tub",          label: "Hot Tub / Spa Install",             nec: "NEC 680.42",      materialCost: 380,  laborCost: 550,  laborHours: 8,   unit: "unit",    variants: [{ label: "Plug-in NEMA 14-50", m: 1 }, { label: "Hardwired 240V/50A", m: 1.4 }, { label: "With GFCI Protection", m: 1.5 }] },
+      { id: "ev_parking",       label: "Driveway / Parking EV Outlet",      nec: "NEC 625.40",      materialCost: 300,  laborCost: 420,  laborHours: 6,   unit: "unit",    variants: [{ label: "NEMA 14-50 Outdoor", m: 1 }, { label: "Level 2 EVSE Pedestal", m: 1.6 }] },
+    ],
+  },
+];
+
+// ─── NEC 2023 RESIDENTIAL REFERENCE ─────────────────────────────────────────
+const NEC_REF = [
+  {
+    article: "90", title: "Introduction", color: "#e8c97a",
+    summary: "Scope, purpose, and authority of the NEC. Establishes that the Code covers the installation of electrical conductors and equipment within or on public and private buildings.",
+    rules: [
+      { code: "90.1", title: "Purpose", text: "The purpose of this Code is the practical safeguarding of persons and property from hazards arising from the use of electricity. Not intended as a design specification or instruction manual." },
+      { code: "90.2", title: "Scope", text: "Covers electrical conductors and equipment installed within or on buildings, structures, and other premises including mobile homes, RVs, floating buildings, and yards." },
+      { code: "90.4", title: "Enforcement", text: "The authority having jurisdiction (AHJ) enforces this Code. The AHJ can waive specific requirements or permit alternative methods when equivalent safety is achieved." },
+      { code: "90.7", title: "Listed Equipment", text: "Examination of equipment for safety purposes is the responsibility of qualified testing organizations. Listing labels are evidence of compliance with applicable standards." },
+    ],
+    violations: ["Installing equipment not listed or approved by the AHJ", "Failing to get required permits and inspections"],
+  },
+  {
+    article: "100", title: "Definitions", color: "#e8c97a",
+    summary: "Defines all terms used throughout the NEC. Understanding these definitions is critical because many code violations stem from misinterpreting what a term means.",
+    rules: [
+      { code: "100", title: "Ampacity", text: "The maximum current, in amperes, that a conductor can carry continuously under the conditions of use without exceeding its temperature rating." },
+      { code: "100", title: "Arc-Fault Circuit Interrupter (AFCI)", text: "A device intended to provide protection from the effects of arc faults by recognizing characteristics unique to arcing and by functioning to de-energize the circuit." },
+      { code: "100", title: "Branch Circuit", text: "The circuit conductors between the final overcurrent device protecting the circuit and the outlet(s)." },
+      { code: "100", title: "Dwelling Unit", text: "A single unit providing complete and independent living facilities for one or more persons, including permanent provisions for living, sleeping, cooking, and sanitation." },
+      { code: "100", title: "Ground-Fault Circuit Interrupter (GFCI)", text: "A device intended to protect personnel from shock by de-energizing a circuit when current to ground exceeds a predetermined value (typically 4–6 mA)." },
+      { code: "100", title: "Overcurrent", text: "Any current in excess of the rated current of equipment or the ampacity of a conductor. Overcurrent may result from overload, short circuit, or ground fault." },
+      { code: "100", title: "Service Entrance", text: "The conductors and equipment for delivering energy from the serving utility to the wiring system of the premises served." },
+    ],
+    violations: [],
+  },
+  {
+    article: "110", title: "Requirements for Electrical Installations", color: "#7eb8e8",
+    summary: "General requirements for all electrical installations: working clearances, examination of equipment, mounting, and connections. One of the most cited articles on residential inspections.",
+    rules: [
+      { code: "110.3(B)", title: "Installation of Listed Equipment", text: "Listed and labeled equipment shall be installed and used in accordance with any instructions included in the listing or labeling. Breakers must go in listed panels; fixtures installed per manufacturer specs." },
+      { code: "110.9", title: "Interrupting Rating", text: "Equipment intended to interrupt current at fault levels shall have an interrupting rating sufficient for the nominal circuit voltage and the current that is available at the line terminals of the equipment." },
+      { code: "110.12", title: "Mechanical Execution of Work", text: "Electrical equipment shall be installed in a neat and workmanlike manner. Open wiring, unsupported cables, junction boxes buried in walls without covers all violate this." },
+      { code: "110.14", title: "Electrical Connections", text: "Terminals for more than one conductor and terminals for conductors not of the same material (Al vs Cu) shall be so identified. Use only Al-rated terminals for aluminum wire." },
+      { code: "110.26", title: "Spaces About Electrical Equipment", text: "Working space: 30 in. wide minimum, 36 in. deep for 0–150V to ground (most residential), 78 in. headroom. Must be kept clear at all times — not used for storage." },
+      { code: "110.27", title: "Guarding of Live Parts", text: "Live parts of electrical equipment operating at 50V or more shall be guarded against accidental contact by approved enclosures, location, or elevation." },
+    ],
+    violations: ["Panel blocked by shelving, water heater, or equipment", "Open knockouts in panels", "Conductors not properly terminated", "Exposed wiring in finished spaces"],
+  },
+  {
+    article: "200", title: "Use and Identification of Grounded Conductors", color: "#a8e87e",
+    summary: "Rules for the white (neutral) wire — identification, use, and where it can and cannot be used. Improper neutral identification is a top inspection failure.",
+    rules: [
+      { code: "200.6", title: "Means of Identifying Grounded Conductors", text: "Conductors #6 AWG or smaller must be identified by white or gray insulation, or three white/gray stripes. Larger conductors may be re-identified at terminations with white tape." },
+      { code: "200.7(C)", title: "Use of White/Gray for Other Than Grounded", text: "A cable with white insulation may be re-identified for use as an ungrounded conductor only at terminations, using tape, painting, or other permanent markings. Common in switch loops." },
+      { code: "200.9", title: "Means of Identification of Terminals", text: "The terminal for connection of the grounded conductor shall be identified with a white metal, silver-colored screw, or marking — used on outlets, fixtures, and devices." },
+      { code: "200.11", title: "Polarity of Connections", text: "No grounded conductor shall be attached to any terminal or lead so as to reverse the designated polarity. Reversed polarity is a common outlet wiring error caught by plug-in testers." },
+    ],
+    violations: ["White wire used as hot without re-identification", "Reversed polarity at outlets", "Neutral wire connected to wrong terminal on device"],
+  },
+  {
+    article: "210", title: "Branch Circuits", color: "#7eb8e8",
+    summary: "The heart of residential wiring. Covers required circuits, outlet placement rules, GFCI and AFCI requirements, load calculations, and small appliance circuits. Most residential work touches this article.",
+    rules: [
+      { code: "210.8", title: "GFCI Protection — Dwelling Units", text: "Required in: bathrooms, garages, outdoors, crawl spaces, unfinished basements, kitchens (within 6 ft of sink), boathouses, bathtub/shower areas, laundry areas, and all 15A/20A 125V outlets in dwelling units (2023). All kitchen countertop receptacles require GFCI regardless of distance from sink." },
+      { code: "210.11(C)", title: "Dwelling Unit Branch Circuits", text: "At least two 20A small-appliance circuits required for kitchen/dining. One 20A circuit for bathroom. One 20A or larger for laundry. One 20A for garage. These cannot serve other outlets." },
+      { code: "210.12", title: "AFCI Protection", text: "Required for all 15A and 20A 125V branch circuits supplying outlets in: all dwelling unit areas (kitchens, family rooms, dining rooms, living rooms, parlors, libraries, dens, bedrooms, sunrooms, recreation rooms, closets, hallways, laundry areas, similar areas)." },
+      { code: "210.17", title: "EV Charging — Outlet Required in Garage", text: "In new one- and two-family dwellings, at least one 208/240V branch circuit dedicated to EV charging must be installed in the garage. Must be at least 40A and installed in conduit." },
+      { code: "210.19", title: "Conductors — Minimum Ampacity", text: "Branch circuit conductors shall have an ampacity not less than the maximum load to be served. For 15A circuits: min 14 AWG. For 20A: min 12 AWG. For 30A: min 10 AWG. For 40A: min 8 AWG." },
+      { code: "210.52", title: "Dwelling Unit Receptacle Outlets", text: "Wall outlets: no point along wall can be more than 6 ft from a receptacle (i.e., outlets every 12 ft). Countertops: every 4 ft, within 2 ft of countertop end. Bathrooms: at least one within 3 ft of each basin. Outdoors: at least one front and rear at grade. Garage: at least one per attached car space. Basement: at least one. Hallways 10 ft+: at least one." },
+      { code: "210.63", title: "HVAC Outlet", text: "At least one 125V 15A or 20A outlet must be installed within 25 ft of HVAC equipment for service use (humidifiers, air handlers, etc.), accessible from the equipment location." },
+      { code: "210.64", title: "Electrical Service Areas", text: "At least one 125V 15A or 20A outlet shall be installed within 50 ft of the service equipment or panelboard, accessible without moving other equipment." },
+    ],
+    violations: ["Missing GFCI in garage, bathroom, exterior, laundry", "Missing AFCI on bedroom circuits", "Kitchen outlets not on small-appliance circuit", "Outlets spaced more than 12 ft apart", "No EV-ready circuit in new garage builds", "Missing outdoor outlets front and rear"],
+  },
+  {
+    article: "215", title: "Feeders", color: "#7eb8e8",
+    summary: "Rules for the wiring between the service panel and sub-panels. Feeder sizing, GFCI protection requirements, and load balancing for sub-panels in detached structures.",
+    rules: [
+      { code: "215.2", title: "Minimum Rating and Size", text: "Feeders shall have an ampacity not less than required to supply the load as computed in Parts III, IV, and V of Article 220. Feeder conductors sized to carry the connected load." },
+      { code: "215.6", title: "Feeder Overcurrent Protection", text: "Feeders shall be protected against overcurrent in accordance with Article 240. The overcurrent device must be sized to protect the feeder conductors." },
+      { code: "215.12", title: "Identification of Feeders", text: "Feeder conductors shall be identified at all termination, connection, and splice points. Color coding or permanent marking required — especially important in panels with multiple feeders." },
+    ],
+    violations: ["Undersized feeder conductors", "Missing disconnect at detached structure", "Improper neutral-ground bonding at sub-panel (bond only at main panel)"],
+  },
+  {
+    article: "220", title: "Branch Circuit, Feeder, and Service Load Calculations", color: "#e8c97a",
+    summary: "How to calculate the electrical load for sizing panels, feeders, and services. Required for any service upgrade or addition to ensure the system isn't overloaded.",
+    rules: [
+      { code: "220.12", title: "Lighting Load", text: "General lighting: 3 VA per square foot for dwelling units. Calculated on the outside dimensions of the dwelling, not livable space." },
+      { code: "220.14", title: "Other Loads", text: "Outlets other than those covered by 220.12 are counted at minimum 180 VA each. Receptacles supplying specific loads are calculated at their actual load." },
+      { code: "220.52", title: "Small Appliance and Laundry Loads", text: "Two 20A small-appliance circuits at 1,500 VA each (3,000 VA total). One 20A laundry circuit at 1,500 VA. These are added to the general lighting load." },
+      { code: "220.54", title: "Clothes Dryers", text: "5,000 VA or the nameplate rating, whichever is larger, for each dryer circuit. Multiple dryers: use Table 220.54 demand factors." },
+      { code: "220.55", title: "Cooking Appliances", text: "Use Table 220.55 for household electric ranges, wall-mounted ovens, and counter-mounted cooking units. Demand factors apply based on number and size of appliances." },
+      { code: "220.82", title: "Optional Calculation for Dwelling Units", text: "Simplified load calculation for one-family dwellings. Allows 100% of first 10,000 VA + 40% of remainder. Widely used for service upgrade calculations." },
+      { code: "220.83", title: "Optional Method — Adding AC Load", text: "When adding central AC, use 100% of the AC load plus 40% of other loads, if larger than the existing heat load. Used to determine if panel upgrade is needed." },
+    ],
+    violations: ["Service undersized for actual load", "Failing to include all loads in calculation", "Not applying demand factors correctly"],
+  },
+  {
+    article: "225", title: "Outside Branch Circuits and Feeders", color: "#e8d47e",
+    summary: "Rules for wiring to detached garages, outbuildings, sheds, and other structures on the same property. Covers overhead and underground runs, disconnects, and grounding.",
+    rules: [
+      { code: "225.6", title: "Conductor Size and Support", text: "Overhead conductors for spans up to 50 ft: min 10 AWG for copper. Over 50 ft: min 8 AWG. Open conductors on insulators must be supported within 12 in. of attachment." },
+      { code: "225.18", title: "Clearance for Overhead Conductors", text: "Minimum clearances: 10 ft above finished grade, sidewalks, platforms. 12 ft over residential driveways. 18 ft over public streets and alleys. 3 ft from windows, doors, porches." },
+      { code: "225.30", title: "Number of Supplies", text: "Only one feeder or branch circuit shall supply a separate structure (with exceptions). Additional circuits allowed only if all are protected by a single disconnect." },
+      { code: "225.32", title: "Location of Disconnect", text: "The disconnecting means shall be installed either inside or outside the separate structure nearest the point of entry of the supply conductors — accessible without entering living space." },
+      { code: "225.36", title: "Suitable for Service Entrance", text: "The disconnecting means in a separate structure shall be suitable for use as service equipment and be rated for the load." },
+    ],
+    violations: ["No disconnect at detached garage or shed", "Overhead clearances not met", "Neutral and ground bonded at sub-panel in separate structure (must be separate — bond only at main)"],
+  },
+  {
+    article: "230", title: "Services", color: "#e8c97a",
+    summary: "Everything about the utility service entrance: overhead and underground service, service conductor sizing, service entrance equipment, disconnecting means, and grounding. Critical for any service upgrade.",
+    rules: [
+      { code: "230.6", title: "Conductors Considered Outside Building", text: "Conductors under at least 2 in. of concrete beneath a building are considered outside the building — relevant for underground service entrance routing." },
+      { code: "230.23", title: "Size and Rating", text: "Service entrance conductors shall have sufficient ampacity for the load as calculated per Article 220, and not less than 100A for a one-family dwelling (230.79(C))." },
+      { code: "230.24", title: "Clearances", text: "Above roofs: 8 ft minimum (3 ft if slope exceeds 4:12). Above ground: 10 ft residential driveways, 12 ft over vehicles, 18 ft over public roads. Must maintain clearance from windows: 3 ft." },
+      { code: "230.42", title: "Minimum Size and Rating", text: "Service conductors shall be sized to carry the calculated load without exceeding the temperature rating of the conductors." },
+      { code: "230.66", title: "Classified Equipment", text: "Service equipment shall be listed and identified as suitable for use as service equipment. Must display maximum service rating." },
+      { code: "230.67", title: "Surge Protection", text: "NEW in NEC 2023: Surge protection (SPD) is now required for all services supplying dwelling units. Must be listed Type 1 or Type 2." },
+      { code: "230.70", title: "General — Service Disconnect", text: "Means shall be provided to disconnect all conductors in a building or structure from the service entrance conductors. Maximum of six disconnects (six throws of the hand rule)." },
+      { code: "230.71", title: "Maximum Number of Disconnects", text: "The service disconnecting means shall consist of not more than six switches or six circuit breakers mounted in a single enclosure, a group of enclosures, or in a switchboard or panelboard." },
+      { code: "230.79", title: "Rating of Service Disconnect", text: "One-family dwelling: minimum 100A (C). Two-family or multi-family: minimum 100A per unit (D). All others: minimum 60A." },
+    ],
+    violations: ["Surge protection missing on new/upgraded services (2023 requirement)", "Service clearances not maintained", "Service panel missing dead-front cover", "Open knockouts in service equipment", "More than six disconnects without main breaker"],
+  },
+  {
+    article: "240", title: "Overcurrent Protection", color: "#e87e7e",
+    summary: "Rules for fuses and circuit breakers: sizing, placement, and protection of conductors. Critical for proper panel wiring and breaker sizing.",
+    rules: [
+      { code: "240.4", title: "Protection of Conductors", text: "Conductors shall be protected against overcurrent in accordance with their ampacities. 14 AWG: max 15A. 12 AWG: max 20A. 10 AWG: max 30A. 8 AWG: max 40-50A depending on conditions." },
+      { code: "240.6", title: "Standard Ampere Ratings", text: "Standard fuse and fixed-trip circuit breaker ratings: 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400A." },
+      { code: "240.21", title: "Location in Circuit", text: "Overcurrent protection shall be provided at the point where the conductor receives its supply. Tap rules (10 ft, 25 ft) allow some flexibility for larger conductors with specific conditions." },
+      { code: "240.24", title: "Location in or on Premises", text: "Overcurrent devices shall be readily accessible. Not located in bathrooms, over stairs, or in clothes closets. Must be accessible without removing panels or equipment." },
+      { code: "240.83", title: "Marking", text: "Circuit breakers shall be durably marked with their ampere rating and interrupting rating. Must be legible without removing any covers." },
+    ],
+    violations: ["14 AWG wiring on 20A breaker", "12 AWG wiring on 30A breaker", "Panel breakers not labeled", "Double-tapped breakers (two conductors on one breaker not rated for it)", "Oversized fuses or breakers"],
+  },
+  {
+    article: "250", title: "Grounding and Bonding", color: "#a8e87e",
+    summary: "One of the most complex and most-violated articles. Covers the entire grounding system: grounding electrode system, equipment grounding conductors, bonding, and sizing. Errors here are safety-critical.",
+    rules: [
+      { code: "250.4", title: "General Requirements", text: "Grounded systems: electrical systems shall be connected to earth to limit voltage imposed by lightning, line surges, or unintentional contact with higher-voltage lines. Equipment grounding: non-current-carrying conductive parts of equipment shall be connected together and to the supply system grounded conductor." },
+      { code: "250.24", title: "Grounding Service-Supplied AC Systems", text: "The main panel neutral bar and ground bar shall be bonded together (only at the main panel, not at sub-panels). The grounded conductor must be connected to the grounding electrode system." },
+      { code: "250.28", title: "Main Bonding Jumper", text: "For a grounded system, the main bonding jumper shall connect the grounded conductor to the equipment grounding conductor and the enclosure. Sized per Table 250.28." },
+      { code: "250.50", title: "Grounding Electrode System", text: "All grounding electrodes present at a structure must be bonded together into a single grounding electrode system: ground rods, ground plates, buried metal water pipe (10 ft+), concrete-encased electrode (Ufer), ground ring, structural steel." },
+      { code: "250.52", title: "Grounding Electrodes", text: "Acceptable electrodes: metal underground water pipe (in contact with earth for 10+ ft), metal frame of building (effectively grounded), concrete-encased electrode (20 ft of rebar or wire in concrete footer), ground ring, rod and pipe electrodes (min 8 ft long, 5/8 in. diameter)." },
+      { code: "250.53", title: "Grounding Electrode Installation", text: "Rod electrodes shall be driven to a depth of 8 ft. If rock is encountered, the rod may be driven at up to 45° or buried in a 30 in. trench. Where a single rod has resistance over 25 ohms, a second electrode must be added." },
+      { code: "250.66", title: "Size of Alternating Current Grounding Electrode Conductor", text: "GEC sizing based on size of largest service entrance conductor per Table 250.66. For 2/0–3/0 Cu service conductors, GEC is minimum 4 AWG Cu. For 350 kcmil and larger, minimum 2 AWG Cu." },
+      { code: "250.104", title: "Bonding of Piping Systems", text: "Metal water piping systems in a building must be bonded to the service equipment enclosure, grounded conductor at service, or grounding electrode conductor. Gas piping bonded to the equipment grounding conductor." },
+      { code: "250.118", title: "Types of Equipment Grounding Conductors", text: "Acceptable EGC types: copper or other corrosion-resistant wire, rigid metal conduit, intermediate metal conduit, EMT, armor of AC cable (BX), copper sheath of MI cable." },
+      { code: "250.119", title: "Identification of Equipment Grounding Conductors", text: "EGCs of wire type: green insulation, green with yellow stripe, or bare copper. Conductors 4 AWG and larger may be re-identified with green tape at terminations." },
+      { code: "250.122", title: "Size of Equipment Grounding Conductors", text: "EGC minimum sizes per Table 250.122 based on overcurrent device rating. 15A circuit: min 14 AWG. 20A: min 12 AWG. 30A: min 10 AWG. 60A: min 10 AWG. 100A: min 8 AWG." },
+    ],
+    violations: ["Neutral and ground bonded in sub-panel", "Missing ground rod or not driven full 8 ft", "Water pipe not bonded", "Gas pipe not bonded", "Green wire used as hot or neutral", "Missing main bonding jumper", "GEC undersized for service conductors"],
+  },
+  {
+    article: "300", title: "Wiring Methods — General", color: "#7eb8e8",
+    summary: "General installation rules that apply to all wiring methods: securing, protecting, splicing, routing through framing, and fill calculations. These requirements apply everywhere.",
+    rules: [
+      { code: "300.4", title: "Protection Against Physical Damage", text: "Where subject to physical damage, conductors shall be protected. Cables through framing members: must be at least 1¼ in. from edge of framing, or use nail plates. Cables in notches must be protected." },
+      { code: "300.5", title: "Underground Installations", text: "Minimum cover requirements: 24 in. for 120V, 18 in. for RMC/IMC, 6 in. for rigid nonmetallic conduit under a 4 in. concrete slab. Direct burial cable rated for use." },
+      { code: "300.6", title: "Protection Against Corrosion", text: "Metal raceways, fittings, boxes, and enclosures shall be protected inside and outside against corrosion. Ferrous metal raceways in concrete or in contact with soil must be corrosion-resistant." },
+      { code: "300.11", title: "Securing and Supporting", text: "Wiring methods shall be secured and supported in accordance with specific article requirements. Cannot use ceiling grid support wires to support wiring unless permitted by specific articles." },
+      { code: "300.14", title: "Length of Free Conductors at Outlets", text: "At outlets, at least 6 in. of free conductor (measured from the point of entry into the enclosure) shall be left at each outlet, junction, and switch point." },
+      { code: "300.15", title: "Boxes, Conduit Bodies, or Fittings Required", text: "A box, conduit body, or fitting shall be installed at each conductor splice point, outlet, switch point, junction point, or pull point. No buried splices without junction boxes." },
+      { code: "300.17", title: "Number and Size of Conductors in Raceway", text: "Conductors shall not fill a raceway to more than the percentage fill allowed by the specific wiring method. Use Chapter 9 tables for conduit fill calculations." },
+      { code: "300.22", title: "Wiring in Ducts, Plenums, and Air-Handling Spaces", text: "Only wiring methods with plenum-rated cables permitted in air-handling spaces. Standard NM-B (Romex) is not permitted in plenum spaces." },
+    ],
+    violations: ["Cables not protected within 1¼ in. of framing edge", "No nail plates where cables are exposed to nails/screws", "Less than 6 in. of free conductor at boxes", "Splices made outside of boxes", "NM cable in plenum spaces"],
+  },
+  {
+    article: "310", title: "Conductors for General Wiring", color: "#7eb8e8",
+    summary: "Conductor ampacity tables, temperature ratings, and insulation types. Used any time you need to size wire for a given load or verify existing wire is adequate.",
+    rules: [
+      { code: "310.4", title: "Conductors in Parallel", text: "Conductors of size 1/0 AWG and larger may be run in parallel. Each set must be same length, same AWG, same insulation type, and terminated the same way. Smaller conductors cannot be paralleled." },
+      { code: "310.14", title: "Aluminum Conductors", text: "Aluminum conductors must use terminals rated for aluminum (AL/CU or AL rated). Aluminum conductors #12 and #10 AWG are listed for specific uses. Anti-oxidant compound required at terminations per manufacturer instructions." },
+      { code: "310.15", title: "Ampacity", text: "Table 310.15(B)(16): 14 AWG Cu = 15A; 12 AWG Cu = 20A; 10 AWG Cu = 30A; 8 AWG Cu = 40-50A; 6 AWG Cu = 55-65A; 4 AWG Cu = 70-85A; 2 AWG Cu = 95-115A; 1/0 AWG Cu = 120-150A; 2/0 AWG Cu = 135-175A; 3/0 AWG Cu = 155-200A. Derate for bundling (more than 3 current-carrying conductors), elevated temperature, and conduit in direct sunlight." },
+      { code: "310.15(B)(3)", title: "Adjustment Factors", text: "When more than 3 current-carrying conductors are in a raceway or cable, ampacity must be derated: 4–6 conductors = 80%; 7–9 = 70%; 10–20 = 50%. Neutral conductors that carry unbalanced loads count as current-carrying." },
+    ],
+    violations: ["14 AWG on 20A circuits", "Aluminum conductors on Cu-only terminals", "Not derating bundled conductors in conduit", "Paralleling conductors smaller than 1/0 AWG"],
+  },
+  {
+    article: "314", title: "Outlet, Device, Pull, and Junction Boxes", color: "#e8b87e",
+    summary: "Box selection, sizing, fill calculations, mounting, and covers. Box fill violations are extremely common — too many wires crammed into a box is a fire and safety hazard.",
+    rules: [
+      { code: "314.16", title: "Number of Conductors in Outlet, Device, and Junction Boxes", text: "Box fill calculation: each conductor entering box = 1 unit (14 AWG = 2.0 cu in., 12 AWG = 2.25 cu in., 10 AWG = 2.5 cu in.). Add: 1 unit for all ground wires combined, 1 unit for each strap-mounted device (outlet, switch), 1 unit for all cable clamps. Total must not exceed box volume." },
+      { code: "314.17", title: "Conductors Entering Boxes, Conduit Bodies, or Fittings", text: "Conductors entering through a cable connector or fitting must be protected from abrasion. All entries must have fittings or connectors — open holes in boxes are a violation." },
+      { code: "314.20", title: "In Wall or Ceiling", text: "Boxes in walls or ceilings of concrete, tile, or similar material must be flush with the finished surface or project beyond it. In combustible material (drywall, wood paneling), box must be flush with the finished surface." },
+      { code: "314.23", title: "Securing and Supporting", text: "Boxes shall be securely supported. Boxes mounted to structural members directly or with mounting brackets. Fan-rated boxes required where ceiling fans will be installed — standard boxes not rated for fan weight and motion." },
+      { code: "314.25", title: "Covers and Canopies", text: "All boxes shall be provided with a cover, faceplate, or fixture canopy. Abandoned wiring in boxes must still have covers. No open boxes in finished spaces." },
+      { code: "314.27", title: "Outlet Boxes for Fixtures", text: "Boxes used for fixture support: rated for the weight of the fixture. Fixtures over 50 lbs require independent support. Ceiling fan boxes must be listed for fan support (314.27(D)) — standard boxes can collapse under fan motion." },
+    ],
+    violations: ["Overfilled boxes (most common NEC violation)", "No cover on junction boxes", "Standard box used for ceiling fan", "Box recessed behind finished wall surface", "Open knockouts in boxes", "Unsupported boxes"],
+  },
+  {
+    article: "334", title: "Nonmetallic-Sheathed Cable (NM/NM-B/Romex)", color: "#7eb8e8",
+    summary: "Rules for the most common residential wiring method. NM-B (Romex) is used throughout homes but has specific limitations — it cannot be used in many commercial applications or exposed in areas subject to physical damage.",
+    rules: [
+      { code: "334.10", title: "Uses Permitted", text: "NM cable permitted in: one- and two-family dwellings, multi-family dwellings up to and including medium construction (not in areas subject to physical damage), and other structures not exceeding 3 stories above grade." },
+      { code: "334.12", title: "Uses Not Permitted", text: "NM cable not permitted: exposed in dropped ceilings of commercial or institutional occupancies, embedded in poured concrete, exposed where subject to physical damage, in any structure exceeding 3 stories, in theaters, or in hazardous locations." },
+      { code: "334.15", title: "Exposed Work", text: "In exposed work, cable shall follow the surface of building finish or be protected from damage. Must be secured within 12 in. of every box and at intervals not exceeding 4.5 ft." },
+      { code: "334.17", title: "Through or Parallel to Framing Members", text: "Cable shall be protected where passing through framing members. Where closer than 1.25 in. to the edge, steel nail plates (at least 1/16 in. thick) are required." },
+      { code: "334.30", title: "Securing and Supporting", text: "NM cable shall be secured within 12 in. of each box, conduit body, or fitting. Must be supported at intervals not exceeding 4.5 ft. Unsupported loops or sagging cable violates this." },
+      { code: "334.80", title: "Ampacity", text: "Ampacity of NM cable limited by the 60°C column of Table 310.15(B)(16), regardless of conductor insulation temperature rating. This is why 12 AWG NM-B is rated 20A even though the wire itself might be 90°C rated." },
+    ],
+    violations: ["NM cable in conduit used outdoors or exposed to moisture", "NM cable in commercial buildings", "Cable not secured within 12 in. of box", "No nail plates where cable is within 1.25 in. of framing edge", "NM cable in poured concrete"],
+  },
+  {
+    article: "358", title: "Electrical Metallic Tubing (EMT)", color: "#7eb8e8",
+    summary: "Rules for EMT conduit — the most common metal raceway used in residential exposed work, garages, and service entrances. Covers installation, bending, and support requirements.",
+    rules: [
+      { code: "358.10", title: "Uses Permitted", text: "EMT permitted for exposed and concealed work in all occupancies. Permitted outdoors where not subject to physical damage. Listed for direct burial where marked. Not for severe physical damage areas — use RMC or IMC there." },
+      { code: "358.20", title: "Size", text: "Minimum trade size 1/2 in. for most applications. Maximum trade size 4 in." },
+      { code: "358.24", title: "Bends", text: "Bends shall be made so that the conduit is not damaged. Total bends between pull points (junction boxes, conduit bodies) shall not exceed 360°. Use proper bending tools — EMT cannot be bent with a pipe wrench." },
+      { code: "358.26", title: "Number of Conductors", text: "Number of conductors as permitted by Chapter 9 fill tables. One conductor: 53% fill. Two conductors: 31% fill. Three or more: 40% fill of interior cross-sectional area." },
+      { code: "358.30", title: "Securing and Supporting", text: "EMT shall be securely fastened within 3 ft of every outlet box, junction box, or fitting. Supported at intervals not exceeding 10 ft." },
+    ],
+    violations: ["More than 360° total bends between pull points", "EMT not supported within 3 ft of boxes", "Using EMT where subject to severe physical damage without protection", "Pulling too many conductors (exceeding fill)"],
+  },
+  {
+    article: "404", title: "Switches", color: "#e87eb8",
+    summary: "Requirements for all switches: grounding, neutral wire at switch boxes (new 2023 requirement), ratings, and grouping. The neutral-at-switch-box rule is a major change for smart switch installations.",
+    rules: [
+      { code: "404.2(C)", title: "Grounded Conductor at Switch Box — NEC 2023", text: "NEW: Where a grounded conductor exists in a switch enclosure, it must be connected to a metal switch box or a device that requires a neutral. This enables future smart switch installation without running a new neutral wire. Required in all new installations." },
+      { code: "404.6", title: "Position and Connection of Switches", text: "Single-throw knife switches shall be installed so gravity will not tend to close them. Switches controlling equipment shall be positioned so the equipment may be safely operated." },
+      { code: "404.7", title: "Rating and Use", text: "General-use snap switches shall be used only for controlling the following loads: resistive and inductive loads (motors limited to 80% of switch rating). Tungsten filament lamp loads limited to switches rated for tungsten filament lamps." },
+      { code: "404.9", title: "Provisions for Snap Switches", text: "Snap switches shall be effectively grounded. Metal faceplates must be grounded through the device or mounting screw. Non-metallic faceplates permitted only on non-grounding circuits where no ground wire exists." },
+      { code: "404.14", title: "Rating and Use of Snap Switches", text: "Dimmers shall be used only with loads for which they are rated. LED dimmers must be compatible with the specific LED drivers used. Dimmer rating must match load type (LED/incandescent not interchangeable)." },
+    ],
+    violations: ["Missing neutral at switch box in new construction (2023)", "Dimmer used with incompatible LED load causing flicker or premature failure", "Switch controlling motor loads without proper motor rating", "Ungrounded metal switch plates"],
+  },
+  {
+    article: "406", title: "Receptacles, Cord Connectors, and Attachment Plugs", color: "#a8e87e",
+    summary: "Rules for all receptacles: tamper-resistance, weather resistance, GFCI marking, replacement requirements, and face-up installation. Tamper-resistant and weather-resistant requirements expanded significantly in NEC 2023.",
+    rules: [
+      { code: "406.4(D)", title: "Replacements", text: "Replacement receptacles must: (1) be GFCI-protected if in a GFCI-required location per 210.8; (2) be tamper-resistant if replacing a TR outlet; (3) be grounded if a grounding means exists. Cannot replace 3-prong with 2-prong if ground exists." },
+      { code: "406.9", title: "Receptacles in Damp or Wet Locations", text: "Outdoor receptacles require in-use covers (weatherproof while plug is inserted). Wet locations: listed in-use covers while receptacle is being used. Damp locations: acceptable when cover closed." },
+      { code: "406.12", title: "Tamper-Resistant Receptacles", text: "All non-locking 15A and 20A 125V and 250V receptacles in dwelling units must be tamper-resistant (TR rated). Applies to all new installations and replacements in dwelling units. TR outlets have internal shutters that prevent insertion of foreign objects." },
+      { code: "406.15", title: "Dimmer-Controlled Receptacles", text: "Dimmer switches shall not control receptacle outlets (only lighting outlets), unless listed for the purpose. Standard dimmers on receptacle circuits are a violation." },
+    ],
+    violations: ["Non-tamper-resistant receptacles in dwelling units", "No in-use cover on outdoor receptacles", "Replacing GFCI-required outlet without GFCI protection", "Dimmer switch on receptacle circuit"],
+  },
+  {
+    article: "408", title: "Switchboards, Switchgear, and Panelboards", color: "#e8c97a",
+    summary: "Requirements for residential load centers and panelboards: labeling, clearances, conductor organization, overcurrent device limits, and working space. Panel violations are very common.",
+    rules: [
+      { code: "408.4", title: "Circuit Directory", text: "All circuits and circuit modifications shall be legibly identified. Identification shall be available on the circuit directory located on the face or inside the door of the panel. 'Unknown' or 'misc' is not acceptable — every circuit must be labeled." },
+      { code: "408.7", title: "Unused Openings", text: "Unused openings in panelboard enclosures shall be closed. Open knockouts allow fingers, rodents, or debris to enter live parts." },
+      { code: "408.36", title: "Overcurrent Protection of Panelboards", text: "Panelboards shall be protected by an overcurrent device having a rating not greater than that of the panelboard. A 200A panel requires a 200A main breaker or larger feeder protection." },
+      { code: "408.54", title: "Maximum Number of Overcurrent Devices", text: "A residential panelboard shall not contain more than 42 overcurrent devices (excluding the main breaker). Tandem breakers can be used in approved spaces to add circuits." },
+      { code: "408.55", title: "Wire-Bending Space in Panelboards", text: "Sufficient wire-bending space must be maintained at all terminals. Cramming conductors into a panel without proper bending space can damage insulation." },
+    ],
+    violations: ["Unlabeled circuits", "Open knockouts in panel", "Panel amperage exceeded by connected breakers", "Double-tapped breakers (two wires on one breaker terminal not rated for two)", "Conductors from multiple circuits sharing a neutral (shared neutrals without handle ties on MWBC)"],
+  },
+  {
+    article: "410", title: "Luminaires, Lampholders, and Lamps", color: "#e8b87e",
+    summary: "Requirements for all lighting fixtures: mounting, wiring, clearances, recessed fixture installation (IC vs non-IC), wet and damp location ratings, and weight support. Recessed lighting violations are extremely common.",
+    rules: [
+      { code: "410.10", title: "Luminaires in Specific Locations", text: "Wet locations: listed for wet locations. Damp locations: listed for damp or wet locations. Bathtub/shower zones: listed for damp locations, no pendant fixtures within 3 ft horizontally and 8 ft vertically of rim." },
+      { code: "410.36", title: "Means of Support", text: "Luminaires shall be securely supported. Fixtures weighing over 50 lbs shall be supported independently of the outlet box, unless the box is listed for that weight. Pendant fixtures on flexible cord shall not exceed 6 lbs without additional support." },
+      { code: "410.116", title: "Recessed Luminaires — Clearances", text: "Non-IC rated fixtures: 1/2 in. clearance from combustibles, 3 in. from insulation. IC-rated (Insulation Contact): may be in contact with insulation. Airtight (AT) rated: reduces air infiltration. In insulated ceilings, IC-rated required. ASTM E283 airtight when in conditioned spaces." },
+      { code: "410.130(G)", title: "Disconnecting Means for Recessed Luminaires", text: "NEW NEC 2023: Recessed luminaires must have a means to disconnect all ungrounded conductors, integral to the fixture or within sight from the fixture. Applies to new installations." },
+      { code: "410.141", title: "Rating", text: "Lampholders shall be marked with the maximum allowable wattage. Installing higher-wattage bulbs than the fixture is rated for causes overheating and fire risk." },
+    ],
+    violations: ["Non-IC recessed fixture in contact with insulation", "Standard fixture in wet/damp location (shower, exterior)", "Ceiling fan on non-fan-rated box", "Fixture over rated wattage", "Missing disconnect at recessed fixture (2023 requirement)"],
+  },
+  {
+    article: "422", title: "Appliances", color: "#b87ee8",
+    summary: "Requirements for household appliances: disconnecting means, overcurrent protection, flexible cords, and specific appliance rules. Covers everything from dishwashers to water heaters.",
+    rules: [
+      { code: "422.11", title: "Overcurrent Protection", text: "Appliances shall be protected against overcurrent per their nameplate ratings. Water heaters and fixed appliances: if not labeled with overcurrent protection, circuit breaker may be up to 150% of nameplate rating." },
+      { code: "422.12", title: "Central Heating Equipment", text: "Central heating equipment shall be supplied by an individual branch circuit. Electric space heating equipment: must not be cord-and-plug connected (except portable heaters)." },
+      { code: "422.16", title: "Flexible Cords", text: "Dishwashers and waste disposals may be cord-and-plug connected with a flexible cord 3–4 ft long. Ranges, dryers, and built-in appliances must be hard-wired (with specific exceptions for ranges in existing locations)." },
+      { code: "422.30", title: "Disconnecting Means", text: "A means to disconnect each appliance from all ungrounded conductors shall be provided. The disconnecting means shall be accessible to the user. For built-in appliances: the circuit breaker or fusible switch may serve as the disconnect if accessible." },
+    ],
+    violations: ["No disconnect accessible for built-in appliances", "Flexible cord on fixed appliance", "Dishwasher on shared circuit (must be individual)"],
+  },
+  {
+    article: "440", title: "Air-Conditioning and Refrigerating Equipment", color: "#b87ee8",
+    summary: "Specific rules for HVAC equipment: sizing conductors and overcurrent protection from nameplate data, disconnect requirements, and whip installation. Different sizing rules than general circuits.",
+    rules: [
+      { code: "440.4", title: "Marking on Hermetic Refrigerant Motor-Compressors", text: "HVAC equipment nameplate shows: rated load amps (RLA), minimum circuit ampacity (MCA), maximum overcurrent protection (MOCP or MFS). Use these values — not a general load calculation." },
+      { code: "440.12", title: "Rating and Interrupting Capacity", text: "Disconnecting means shall have a rating of at least 115% of the nameplate rated-load current or branch-circuit selection current, whichever is greater." },
+      { code: "440.14", title: "Location", text: "The disconnect shall be located within sight of the equipment and readily accessible. Cannot be more than 50 ft from the equipment and must be within line of sight." },
+      { code: "440.32", title: "Single Motor-Compressor", text: "Branch circuit conductors shall have an ampacity not less than 125% of the motor-compressor rated-load current or branch-circuit selection current, whichever is greater." },
+      { code: "440.62", title: "Room Air Conditioners", text: "Window/room AC units may be cord-and-plug connected to 15A or 20A circuits with specific current limitations. The air conditioner shall be the only load on the circuit." },
+    ],
+    violations: ["Disconnect not within sight of AC unit", "Conductor undersized for 125% of RLA", "Overcurrent protection exceeds MOCP on nameplate", "AC unit on shared circuit"],
+  },
+  {
+    article: "550", title: "Mobile Homes, Manufactured Homes", color: "#e8d47e",
+    summary: "Specific requirements for mobile and manufactured homes. Relevant when connecting a manufactured home to site electrical service.",
+    rules: [
+      { code: "550.10", title: "Power Supply", text: "Power supply to a manufactured home: listed manufactured home supply cord or permanent feeder. 30A (3-wire) or 50A (4-wire) supply based on load." },
+      { code: "550.33", title: "Feeder", text: "Feeders to manufactured homes shall include a grounding conductor. The grounding conductor must be connected separately from the neutral at the disconnect." },
+    ],
+    violations: ["Neutral and ground bonded at the manufactured home panel (must be separate)"],
+  },
+  {
+    article: "625", title: "Electric Vehicle Power Transfer", color: "#e8d47e",
+    summary: "NEC 2023 significantly expanded EV charging requirements. Now requires EV-ready circuits in new homes, covers EVSE installation, and addresses bidirectional EV charging.",
+    rules: [
+      { code: "625.2", title: "Definitions", text: "EVSE: Electric Vehicle Supply Equipment. The conductors, including the ungrounded, grounded, and equipment grounding conductors, the electric vehicle connectors, attachment plugs, and all other fittings, devices, power outlets, or apparatus installed specifically for the purpose of transferring energy between the premises wiring and the electric vehicle." },
+      { code: "625.40", title: "Electric Vehicle Branch Circuit", text: "Each EVSE outlet or attached EV supply equipment shall be supplied by a separate branch circuit. The circuit shall have no other outlets. Minimum 40A for Level 2 EVSE in new construction." },
+      { code: "625.42", title: "Rating of Outlet", text: "For portable cord-connected EVSE (plug-in chargers), the receptacle or outlet shall be rated at not less than the minimum ampere rating of the EVSE." },
+      { code: "625.52", title: "Ventilation Not Required for EV Charging", text: "Ventilation is not required for listed EV charging equipment in garages — these units manage charging within safe battery parameters. Older hydrogen venting concerns don't apply to lithium-ion EVs." },
+      { code: "625.60", title: "Interactive Systems — Vehicle-to-Home (V2H)", text: "NEW NEC 2023: Provisions for bidirectional charging (vehicle-to-home, V2G). The EV can power home loads during outages. Requires listed interactive equipment and a transfer switch that prevents backfeed to utility." },
+    ],
+    violations: ["EVSE on shared circuit", "No EV-ready branch circuit in new garage (2023)", "Incorrect wire sizing for 40A EVSE circuit", "Missing or incorrect GFCI on EVSE outlets"],
+  },
+  {
+    article: "680", title: "Swimming Pools, Fountains, and Similar Installations", color: "#7ee8d4",
+    summary: "Some of the strictest rules in the NEC. Pool and spa electrical work requires bonding of all metal parts, GFCI protection, strict distance rules from water, and proper luminaire ratings. Violations here can be fatal.",
+    rules: [
+      { code: "680.6", title: "Grounding", text: "All electrical equipment within 5 ft of pool edge shall be grounded. Equipment grounding conductors shall be insulated (not bare) for connections to pool equipment." },
+      { code: "680.21", title: "Motors", text: "Wiring methods for pool pump motors: rigid metal conduit, intermediate metal conduit, rigid PVC conduit, Type MC cable, or copper conductors in EMT permitted. Must be GFCI-protected (20A or less). Receptacle for pump motor within 6–10 ft of pool edge, GFCI-protected." },
+      { code: "680.22", title: "Area Lighting, Receptacles, and Equipment", text: "Receptacles: minimum 6 ft from pool edge. GFCI protection for all receptacles within 20 ft of pool. No receptacles within 10 ft of indoor pools. Luminaires: minimum 12 ft horizontally from pool edge unless at least 5 ft above water level." },
+      { code: "680.26", title: "Equipotential Bonding", text: "All metal parts of pools must be bonded: water, metal walls, metal forming shells, metal fittings, metal enclosures, motors, junction boxes, all metal within 5 ft. Bond wire: min 8 AWG solid copper. This bonding prevents voltage differences that can electrocute swimmers (electric shock drowning)." },
+      { code: "680.42", title: "Outdoor Spas and Hot Tubs", text: "Must have GFCI protection. Metal parts within 5 ft must be bonded. Outdoor spas: only listed outdoor spa luminaires permitted. Flexible cord from motor to disconnect." },
+    ],
+    violations: ["Incomplete equipotential bonding (leaving metal parts unbonded)", "Receptacles within 6 ft of pool edge", "Lighting within 12 ft horizontally of pool edge", "Missing GFCI on pool equipment circuits", "Bare grounding conductors used in pool area"],
+  },
+  {
+    article: "690", title: "Solar Photovoltaic (PV) Systems", color: "#e8d47e",
+    summary: "Requirements for solar panel installations: rapid shutdown, arc-fault protection, disconnecting means, and backfeed protection. Critical for any solar or battery storage work.",
+    rules: [
+      { code: "690.12", title: "Rapid Shutdown of PV Systems on Buildings", text: "PV systems on buildings must include a rapid shutdown function that, when initiated, reduces PV system voltage to 30V or less within 30 seconds. Required for firefighter safety. Must include a labeled initiation device (roof-level disconnect or utility disconnect)." },
+      { code: "690.15", title: "Disconnecting Means", text: "Means shall be provided to disconnect the PV system from all wiring systems including power systems, energy storage systems, and utilization equipment. Must be accessible, externally operable, and lockable." },
+      { code: "690.56", title: "Equipment", text: "Buildings with PV systems shall have a permanent plaque or directory at the service entrance indicating the location of all PV system disconnecting means and that the building has a PV system." },
+    ],
+    violations: ["No rapid shutdown system", "Missing PV system placard at service entrance", "PV conductors in same conduit as service conductors without proper separation"],
+  },
+  {
+    article: "700", title: "Emergency Systems", color: "#e87e7e",
+    summary: "Requirements for emergency electrical systems in buildings where loss of power could threaten life safety. Covers automatic transfer equipment, testing, and backup power.",
+    rules: [
+      { code: "700.3", title: "Tests and Maintenance", text: "Emergency systems shall be tested periodically to ensure they will function properly in an emergency. Monthly operational tests and annual load tests required for systems that depend on storage batteries." },
+      { code: "700.12", title: "General Requirements for Emergency Sources", text: "Emergency power sources include: storage batteries, generator sets, UPS, fuel cell systems, or other approved sources. Must supply emergency load within 10 seconds of power failure." },
+    ],
+    violations: ["Emergency system not tested", "Transfer switch not rated for connected load"],
+  },
+  {
+    article: "702", title: "Optional Standby Systems", color: "#b87ee8",
+    summary: "Requirements for portable and permanently installed generators used for optional standby power in homes. Covers transfer switches, inlet boxes, and interlocks — critical for safe generator hookup.",
+    rules: [
+      { code: "702.5", title: "Capacity and Rating", text: "An optional standby system shall have adequate capacity and rating for the supply of all equipment intended to be operated simultaneously. Load calculation required." },
+      { code: "702.6", title: "Transfer Equipment", text: "Transfer equipment, including automatic transfer switches, shall be designed and installed to prevent inadvertent interconnection of normal and alternate sources. Interlock kit or transfer switch required — direct generator hookup to outlet (backfeed) is illegal and dangerous." },
+      { code: "702.7", title: "Signals", text: "Audible and visual signal devices shall be provided, where practicable, for the following: derangement of the optional standby source, battery charging failure." },
+    ],
+    violations: ["No transfer switch (generator plugged directly into outlet — backfeed kills utility workers)", "Transfer switch undersized for connected load", "Missing inlet box weatherproof cover"],
+  },
+  {
+    article: "760", title: "Fire Alarm Systems", color: "#e87e7e",
+    summary: "Requirements for hardwired fire alarm and smoke detection systems. Covers wiring methods, power supplies, and interconnection of detectors. Key for smoke/CO detector installations.",
+    rules: [
+      { code: "760.30", title: "Fire Alarm Circuit Wiring", text: "Fire alarm circuit conductors are classified as NPLFA (non-power-limited) or PLFA (power-limited). Power-limited fire alarm cable (FPLR, FPLP) is commonly used in homes for hardwired detector interconnection." },
+      { code: "760.41", title: "NPLFA Circuit Supply", text: "Non-power-limited fire alarm circuits supplied from standard branch circuits shall have overcurrent protection at 20A maximum. Must have a dedicated circuit label." },
+      { code: "760.121", title: "Power Sources", text: "Power-limited fire alarm systems shall be supplied from a branch circuit at the panelboard. The circuit shall be dedicated to fire alarm and shall not supply other loads." },
+    ],
+    violations: ["Smoke detectors not interconnected (when 3+ units required)", "Using wrong cable type for fire alarm wiring", "Sharing fire alarm circuit with general loads"],
+  },
+  {
+    article: "800", title: "Communications Circuits", color: "#7ee8d4",
+    summary: "Rules for telephone, internet, and cable TV wiring. Covers entrance protection, grounding, and separation from power wiring. Often overlooked but can cause shock or fire hazards.",
+    rules: [
+      { code: "800.4", title: "Equipment — Listing", text: "Communications equipment installed in or on buildings shall be listed." },
+      { code: "800.90", title: "Protective Devices", text: "A listed primary protector shall be provided for each circuit run partly or wholly in aerial wire or cable not confined within a block. The primary protector shall be listed for the purpose." },
+      { code: "800.100", title: "Grounding", text: "Primary protector grounding conductors shall be copper or other corrosion-resistant material, insulated, listed, and not smaller than 14 AWG. Connected to the power grounding electrode system. Minimum length: as short as practicable." },
+      { code: "800.133", title: "Installation of Communications Wires and Cables", text: "Communications cables shall be separated from power conductors. Maintain separation from power wiring by at least 2 in. unless in a separate raceway or conduit, or one of the conductors is in a metal raceway." },
+    ],
+    violations: ["Communications cable in same conduit as power (without proper separation)", "Missing surge protector on aerial communications entry", "Communications grounding not bonded to power ground"],
+  },
+];
+
+const MARKUP_OPTIONS = [{ label: "15%", v: 0.15 }, { label: "20%", v: 0.20 }, { label: "25%", v: 0.25 }, { label: "30%", v: 0.30 }, { label: "40%", v: 0.40 }, { label: "50%", v: 0.50 }];
+const HOURLY_RATES   = [55, 65, 75, 85, 95, 110, 125, 150];
+const ALL_SERVICES   = CATEGORIES.flatMap(c => c.services.map(s => ({ ...s, catColor: c.color, catLabel: c.label })));
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const calcLine = (service, entry, hourlyRate) => {
+  const v      = service.variants[entry.variantIdx ?? 0];
+  const mat    = service.materialCost * v.m * entry.qty;
+  const lab    = service.laborCost    * v.m * entry.qty;
+  const hrs    = service.laborHours   * v.m * entry.qty;
+  return { mat, lab, hrs, total: mat + lab };
 };
 
-const CONDS = {
-  openWalls:      {label:"Customer opens walls",          mult:0.85,sign:"-15%",clr:"#30d158"},
-  finishedWalls:  {label:"Finished walls (fish wire)",    mult:1.20,sign:"+20%",clr:"#ffd60a"},
-  oldWiring:      {label:"Old / knob-and-tube wiring",   mult:1.30,sign:"+30%",clr:"#ff453a"},
-  newConstruction:{label:"New construction rough-in",     mult:0.88,sign:"-12%",clr:"#30d158"},
-  atticAccess:    {label:"Attic / crawl space access",   mult:0.92,sign:"-8%", clr:"#30d158"},
-  highCeilings:   {label:"High ceilings (10ft+)",        mult:1.15,sign:"+15%",clr:"#ffd60a"},
-  hazmat:         {label:"Asbestos / hazmat present",    mult:1.40,sign:"+40%",clr:"#ff453a"},
-};
-
-const SQFT_PRESETS = {
-  "Small — Under 1,000 sq ft":  {receptacles:10,switches:6,snapLED:6,smokeDetector:2,gfciOutlet:4,panelCircuit:2},
-  "Medium — 1,000–2,000 sq ft": {receptacles:18,switches:10,snapLED:10,smokeDetector:3,gfciOutlet:6,panelCircuit:3},
-  "Large — 2,000–3,500 sq ft":  {receptacles:28,switches:16,snapLED:16,smokeDetector:5,gfciOutlet:8,panelCircuit:5},
-  "XL — 3,500+ sq ft":          {receptacles:40,switches:22,snapLED:22,smokeDetector:7,gfciOutlet:10,panelCircuit:7},
-};
-
-const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
-
-const T = {
-  en:{disclaimer:"Estimates based on regional averages · Final pricing subject to on-site verification · Always pull permits",langBtn:"ES"},
-  es:{disclaimer:"Estimados basados en promedios regionales · Precio final sujeto a verificación · Siempre saque permisos",langBtn:"EN"},
-};
-
-const fmt  = n => "$"+n.toLocaleString();
-const fmtR = (lo,hi) => lo===hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
-const today = () => new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
-const invNum = () => "VQ-"+Date.now().toString().slice(-6);
-
-// ─── APPLE DARK DESIGN TOKENS ─────────────────────────────────────────────────
-const G = {
-  // Backgrounds — layered like iOS
-  bg:          "#000000",       // true black (OLED)
-  bgElevated:  "#0d0d0d",       // slightly elevated
-  surface:     "#1c1c1e",       // card / grouped background
-  surfaceRaised:"#2c2c2e",      // raised card
-  surfaceTert: "#3a3a3c",       // tertiary fill
-  // Separators
-  sep:         "rgba(255,255,255,0.08)",
-  sepStrong:   "rgba(255,255,255,0.14)",
-  // Labels
-  label:       "#ffffff",
-  labelSec:    "rgba(235,235,245,0.6)",
-  labelTert:   "rgba(235,235,245,0.3)",
-  labelQuat:   "rgba(235,235,245,0.18)",
-  // Accent — VoltQuote amber
-  amber:       "#f5a623",
-  amberDim:    "rgba(245,166,35,0.18)",
-  amberGlow:   "rgba(245,166,35,0.35)",
-  // System colors (Apple)
-  blue:        "#0a84ff",
-  blueL:       "rgba(10,132,255,0.15)",
-  green:       "#30d158",
-  greenL:      "rgba(48,209,88,0.15)",
-  red:         "#ff453a",
-  redL:        "rgba(255,69,58,0.15)",
-  yellow:      "#ffd60a",
-  yellowL:     "rgba(255,214,10,0.15)",
-  orange:      "#ff9f0a",
-  // Glass
-  glass:       "rgba(28,28,30,0.85)",
-  glassBorder: "rgba(255,255,255,0.1)",
-};
-
-// ─── SHARED STYLES ────────────────────────────────────────────────────────────
-const PB = {
-  background: G.amber,
-  border:"none",
-  borderRadius:12,
-  padding:"11px 22px",
-  color:"#000",
-  fontWeight:700,
-  fontSize:14,
-  cursor:"pointer",
-  fontFamily:"inherit",
-  letterSpacing:-0.1,
-  transition:"all 0.15s ease",
-};
-const GB = {
-  background:"rgba(255,255,255,0.08)",
-  border:"1px solid rgba(255,255,255,0.12)",
-  borderRadius:12,
-  padding:"10px 20px",
-  color:G.label,
-  fontWeight:600,
-  fontSize:14,
-  cursor:"pointer",
-  fontFamily:"inherit",
-  transition:"all 0.15s ease",
-};
-const SEL = {
-  width:"100%",
-  padding:"11px 14px",
-  background:G.surfaceRaised,
-  border:"1px solid "+G.sep,
-  borderRadius:10,
-  color:G.label,
-  fontSize:15,
-  fontFamily:"inherit",
-  cursor:"pointer",
-  outline:"none",
-  boxSizing:"border-box",
-  appearance:"none",
-  WebkitAppearance:"none",
-};
-const QB = {
-  width:32,
-  height:32,
-  borderRadius:8,
-  background:G.surfaceRaised,
-  border:"1px solid "+G.sep,
-  color:G.amber,
-  fontSize:17,
-  cursor:"pointer",
-  display:"flex",
-  alignItems:"center",
-  justifyContent:"center",
-  fontWeight:700,
-  flexShrink:0,
-  transition:"all 0.15s",
-};
-
-export default function VoltQuote() {
-  const [lang,setLang] = useState("en");
-  const [view,setView] = useState("landing");
-  const [tab,setTab] = useState("estimator");
-  const [mode,setMode] = useState("flat");
-  const [qty,setQty] = useState({});
-  const [cond,setCond] = useState({});
-  const [markup,setMarkup] = useState(20);
-  const [rate,setRate] = useState(85);
-  const [incMat,setIncMat] = useState(true);
-  const [incPermit,setIncPermit] = useState(true);
-  const [region,setRegion] = useState("Binghamton, NY");
-  const [result,setResult] = useState(null);
-  const [aiSum,setAiSum] = useState("");
-  const [loading,setLoading] = useState(false);
-  const [copied,setCopied] = useState(false);
-  const [savedOk,setSavedOk] = useState(false);
-  const [expanded,setExpanded] = useState({"Wiring Devices":true});
-  const [chatInput,setChatInput] = useState("");
-  const [chatHistory,setChatHistory] = useState([]);
-  const [chatLoading,setChatLoading] = useState(false);
-  const [showCustomer,setShowCustomer] = useState(false);
-  const [showInvoice,setShowInvoice] = useState(false);
-  const [history,setHistory] = useState([]);
-  const [photoAnalysis,setPhotoAnalysis] = useState("");
-  const [photoLoading,setPhotoLoading] = useState(false);
-  const [cName,setCName] = useState("");
-  const [cPhone,setCPhone] = useState("");
-  const [cEmail,setCEmail] = useState("");
-  const [cLic,setCLic] = useState("");
-  const [cCity,setCCity] = useState("");
-  const [cState,setCState] = useState("NY");
-  const [overhead,setOverhead] = useState({insurance:300,vehicle:400,tools:100,phone:80,misc:200});
-  const [targetHrs,setTargetHrs] = useState(120);
-  const [profitPct,setProfitPct] = useState(25);
-  const [invoiceDue,setInvoiceDue] = useState(30);
-  const [invoiceClient,setInvoiceClient] = useState("");
-  const [invoiceNotes,setInvoiceNotes] = useState("");
-  const [necSearch,setNecSearch] = useState(""); // eslint-disable-line no-unused-vars
-  const fileRef = useRef(null);
-
-  const rm = REGIONS[region]||1.0;
-  const cm = () => Object.entries(cond).reduce((m,[k,v])=>v?m*CONDS[k].mult:m,1.0);
-  const totalOh = Object.values(overhead).reduce((a,b)=>a+(Number(b)||0),0);
-  const trueRate = targetHrs>0 ? Math.ceil((totalOh/targetHrs)*(1+profitPct/100)) : 0;
-  const hasItems = Object.values(qty).some(v=>v>0);
-  const totalItems = Object.values(qty).reduce((a,b)=>a+(b||0),0);
-
-  useEffect(()=>{
-    try{const s=localStorage.getItem("vq_hist2");if(s)setHistory(JSON.parse(s));}catch{}
-  },[]);
-
-  const calculate = () => {
-    let tLo=0,tHi=0,tMat=0,tHrs=0;
-    const items=[];
-    const c=cm();
-    Object.entries(CATS).forEach(([cat,jobs])=>{
-      Object.entries(jobs).forEach(([key,job])=>{
-        const q=qty[key];if(!q||q<=0) return;
-        const lo=Math.round(job.low*q*rm*c);
-        const hi=Math.round(job.high*q*rm*c);
-        const mat=Math.round((job.mat||0)*q);
-        const hrs=Math.round((job.hours||0)*q*10)/10;
-        tLo+=lo;tHi+=hi;tMat+=mat;tHrs+=hrs;
-        items.push({label:job.label,qty:q,low:lo,high:hi,mat,hrs,nec:job.nec,cat});
-      });
-    });
-    let tm=0;
-    if(mode==="tm") tm=Math.round(tHrs*rate+tMat*(1+markup/100));
-    if(incMat&&mode==="flat"){
-      const mlo=Math.round(tMat*(markup/100));
-      const mhi=Math.round(tMat*(markup/100)*1.1);
-      tLo+=mlo;tHi+=mhi;
-      items.push({label:`Materials Markup (${markup}%)`,qty:null,low:mlo,high:mhi,mat:0,hrs:0,nec:null});
-    }
-    if(incPermit){
-      const fee=cState==="NY"||region.includes("NY")?150:100;
-      tLo+=fee;tHi+=fee;if(mode==="tm")tm+=fee;
-      items.push({label:"Permit & Inspection (est.)",qty:null,low:fee,high:fee,mat:0,hrs:0,nec:null});
-    }
-    const r={items,tLo,tHi,tMat,tHrs,tm,region,mode,date:today(),id:invNum()};
-    setResult(r);
-    genSum(items,tLo,tHi,region,tHrs,mode,tm);
-  };
-
-  const genSum = async(items,lo,hi,rgn,hrs,md,tm)=>{
-    setLoading(true);setAiSum("");
-    const scope=items.filter(i=>i.qty).map(i=>`${i.label}×${i.qty}`).join(", ");
-    const ps=md==="tm"?fmt(tm):`${fmt(lo)}–${fmt(hi)}`;
-    try{
-      const r=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,
-          messages:[{role:"user",content:`You are a professional electrical contractor. Write a confident 3-sentence quote summary for a residential customer in ${rgn}. Scope: ${scope}. Total: ${ps}. Est labor: ${hrs}h. Mention NEC 2023 compliance and that final price depends on site conditions. Professional, no bullets.`}]})});
-      const d=await r.json();
-      setAiSum(d.content?.map(b=>b.text||"").join("")||"");
-    }catch{setAiSum("Estimate complete. Contact us for a detailed on-site assessment.");}
-    setLoading(false);
-  };
-
-  const sendChat = async()=>{
-    if(!chatInput.trim()) return;
-    const msg={role:"user",content:chatInput};
-    const hist=[...chatHistory,msg];
-    setChatHistory(hist);setChatInput("");setChatLoading(true);
-    const ctx=result?`Current estimate: ${fmtR(result.tLo,result.tHi)} in ${result.region}.`:"";
-    try{
-      const r=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
-          system:`You are an expert residential electrician and NEC 2023 authority. Answer concisely with specific code article references. Be practical and clear. ${ctx}`,
-          messages:hist})});
-      const d=await r.json();
-      setChatHistory([...hist,{role:"assistant",content:d.content?.map(b=>b.text||"").join("")||""}]);
-    }catch{setChatHistory([...hist,{role:"assistant",content:"Unable to respond. Please try again."}]);}
-    setChatLoading(false);
-  };
-
-  const handlePhoto = async(e)=>{
-    const file=e.target.files[0];if(!file)return;
-    setPhotoLoading(true);setPhotoAnalysis("");
-    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej();r.readAsDataURL(file);});
-    try{
-      const r=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
-          messages:[{role:"user",content:[
-            {type:"image",source:{type:"base64",media_type:file.type,data:b64}},
-            {type:"text",text:"You are a residential electrician. Analyze this photo. Identify electrical work visible or needed: outlets, switches, panels, lighting, fans, smoke detectors, GFCI. Write a short paragraph then a bulleted list of specific estimate items."}
-          ]}]})});
-      const d=await r.json();
-      setPhotoAnalysis(d.content?.map(b=>b.text||"").join("")||"");
-    }catch{setPhotoAnalysis("Could not analyze photo. Please try again.");}
-    setPhotoLoading(false);
-  };
-
-  const saveEst = ()=>{
-    if(!result) return;
-    const est={...result,summary:aiSum};
-    const updated=[est,...history].slice(0,30);
-    setHistory(updated);
-    try{localStorage.setItem("vq_hist2",JSON.stringify(updated));}catch{}
-    setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);
-  };
-
-  const copyQuote = ()=>{
-    if(!result) return;
-    const co=cName?`\n${cName}${cPhone?" · "+cPhone:""}${cLic?" · Lic#"+cLic:""}`:"";
-    const lines=result.items.map(i=>`  ${i.label}${i.qty?` ×${i.qty}`:""}: ${fmtR(i.low,i.high)}`).join("\n");
-    const total=result.mode==="tm"?fmt(result.tm):`${fmt(result.tLo)}–${fmt(result.tHi)}`;
-    navigator.clipboard.writeText(`VOLTQUOTE ESTIMATE${co}\n${result.region} · ${result.date} · ${result.id}\n${"─".repeat(50)}\n${lines}\n${"─".repeat(50)}\nTOTAL: ${total}  |  ~${result.tHrs} labor hours\n\n${aiSum}\n\nValid 30 days. All work per NEC 2023 standards.`);
-    setCopied(true);setTimeout(()=>setCopied(false),2000);
-  };
-
-  // ── INVOICE ──────────────────────────────────────────────────────────────────
-  if(showInvoice&&result) return (
-    <div style={{background:G.bg,minHeight:"100vh",padding:"32px 16px",fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif"}}>
-      <div style={{maxWidth:640,margin:"0 auto"}}>
-        {/* Invoice header */}
-        <div style={{background:G.surface,borderRadius:"20px 20px 0 0",padding:"32px",border:`1px solid ${G.sep}`,borderBottom:"none",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-              <div style={{width:36,height:36,background:G.amber,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:"#000"}}>⚡</div>
-              <span style={{fontSize:11,fontWeight:700,color:G.amber,letterSpacing:2,textTransform:"uppercase"}}>VoltQuote</span>
-            </div>
-            <div style={{fontSize:20,fontWeight:700,color:G.label,letterSpacing:-0.5}}>{cName||"Professional Electrician"}</div>
-            {cPhone&&<div style={{fontSize:13,color:G.labelSec,marginTop:4}}>📞 {cPhone}</div>}
-            {cEmail&&<div style={{fontSize:13,color:G.labelSec}}>✉️ {cEmail}</div>}
-            {cLic&&<div style={{fontSize:12,color:G.amber,marginTop:6,fontWeight:600}}>License #{cLic}</div>}
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:10,color:G.labelTert,textTransform:"uppercase",letterSpacing:2,marginBottom:4}}>Invoice</div>
-            <div style={{fontSize:16,fontWeight:700,color:G.amber,fontFamily:"monospace"}}>{result.id}</div>
-            <div style={{fontSize:10,color:G.labelTert,textTransform:"uppercase",letterSpacing:2,marginTop:12,marginBottom:4}}>Date</div>
-            <div style={{fontSize:13,color:G.labelSec}}>{result.date}</div>
-            <div style={{fontSize:10,color:G.labelTert,textTransform:"uppercase",letterSpacing:2,marginTop:10,marginBottom:4}}>Terms</div>
-            <div style={{fontSize:13,color:G.labelSec}}>Net {invoiceDue} days</div>
-          </div>
-        </div>
-        {/* Invoice body */}
-        <div style={{background:G.surface,border:`1px solid ${G.sep}`,borderTop:`1px solid ${G.sepStrong}`,borderRadius:"0 0 20px 20px",padding:"28px 32px"}}>
-          {invoiceClient&&<div style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${G.sep}`}}>
-            <div style={{fontSize:11,color:G.labelTert,textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>Bill To</div>
-            <div style={{fontSize:15,fontWeight:600,color:G.label}}>{invoiceClient}</div>
-          </div>}
-          <table style={{width:"100%",borderCollapse:"collapse",marginBottom:20}}>
-            <thead>
-              <tr style={{borderBottom:`1px solid ${G.sepStrong}`}}>
-                {["Description","Qty","Amount"].map(h=>(
-                  <th key={h} style={{textAlign:h==="Amount"?"right":"left",fontSize:11,color:G.labelTert,padding:"0 0 12px",fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {result.items.map((item,i)=>(
-                <tr key={i} style={{borderBottom:`1px solid ${G.sep}`}}>
-                  <td style={{padding:"12px 0",fontSize:14,color:G.label}}>{item.label}</td>
-                  <td style={{padding:"12px 0",fontSize:14,color:G.labelSec,textAlign:"center"}}>{item.qty||"—"}</td>
-                  <td style={{padding:"12px 0",fontSize:14,fontWeight:600,color:G.label,textAlign:"right",fontFamily:"monospace"}}>{fmtR(item.low,item.high)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:24}}>
-            <div style={{width:260,borderTop:`1px solid ${G.sepStrong}`,paddingTop:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:15,fontWeight:600,color:G.labelSec}}>Total</span>
-                <span style={{fontSize:26,fontWeight:700,color:G.amber,fontFamily:"monospace"}}>{result.mode==="tm"?fmt(result.tm):`${fmt(result.tLo)}–${fmt(result.tHi)}`}</span>
-              </div>
-            </div>
-          </div>
-          {invoiceNotes&&<div style={{background:G.amberDim,borderRadius:12,padding:16,marginBottom:16,border:`1px solid ${G.amberGlow}`}}>
-            <div style={{fontSize:11,color:G.amber,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Notes</div>
-            <div style={{fontSize:13,color:G.labelSec,lineHeight:1.7}}>{invoiceNotes}</div>
-          </div>}
-          <div style={{fontSize:12,color:G.labelTert,textAlign:"center",lineHeight:1.9}}>
-            All work performed to NEC 2023 standards · Estimate valid 30 days
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:16,justifyContent:"center"}}>
-          <button onClick={()=>window.print()} style={PB}>🖨️ Print / Save PDF</button>
-          <button onClick={()=>setShowInvoice(false)} style={GB}>← Back</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── CUSTOMER VIEW ────────────────────────────────────────────────────────────
-  if(showCustomer&&result) return (
-    <div style={{background:G.bg,minHeight:"100vh",padding:"32px 16px",fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif"}}>
-      <div style={{maxWidth:600,margin:"0 auto"}}>
-        <div style={{background:G.surface,borderRadius:"20px 20px 0 0",padding:"28px",border:`1px solid ${G.sep}`,borderBottom:"none"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-            <div style={{width:30,height:30,background:G.amber,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#000"}}>⚡</div>
-            <span style={{fontSize:10,fontWeight:700,color:G.amber,letterSpacing:2,textTransform:"uppercase"}}>VoltQuote Estimate</span>
-          </div>
-          <div style={{fontSize:19,fontWeight:700,color:G.label,letterSpacing:-0.5}}>{cName||"Professional Electrician"}</div>
-          {cPhone&&<div style={{fontSize:13,color:G.labelSec,marginTop:3}}>📞 {cPhone}</div>}
-          {cEmail&&<div style={{fontSize:13,color:G.labelSec}}>✉️ {cEmail}</div>}
-          {cLic&&<div style={{fontSize:11,color:G.amber,marginTop:4}}>License #{cLic}</div>}
-          <div style={{fontSize:12,color:G.labelTert,marginTop:8}}>{result.date} · {result.region}</div>
-        </div>
-        <div style={{background:G.surface,border:`1px solid ${G.sep}`,borderTop:`1px solid ${G.sepStrong}`,borderRadius:"0 0 20px 20px",padding:"24px 28px"}}>
-          {result.items.filter(i=>i.qty).map((item,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:`1px solid ${G.sep}`}}>
-              <div>
-                <div style={{fontSize:14,fontWeight:500,color:G.label}}>{item.label}</div>
-                <div style={{fontSize:12,color:G.labelTert,marginTop:2}}>Qty: {item.qty}</div>
-              </div>
-              <div style={{fontSize:14,fontWeight:600,color:G.amber,fontFamily:"monospace"}}>{fmtR(item.low,item.high)}</div>
-            </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 0",borderTop:`1px solid ${G.sepStrong}`,marginTop:4}}>
-            <div>
-              <div style={{fontSize:16,fontWeight:700,color:G.label}}>Total Estimate</div>
-              <div style={{fontSize:12,color:G.labelTert,marginTop:2}}>~{result.tHrs} labor hours</div>
-            </div>
-            <div style={{fontSize:28,fontWeight:700,color:G.amber,fontFamily:"monospace"}}>
-              {result.mode==="tm"?fmt(result.tm):`${fmt(result.tLo)}–${fmt(result.tHi)}`}
-            </div>
-          </div>
-          {aiSum&&<div style={{background:G.amberDim,borderRadius:12,padding:16,marginBottom:16,border:`1px solid ${G.amberGlow}`,fontSize:13,lineHeight:1.8,color:G.labelSec}}>{aiSum}</div>}
-          <div style={{fontSize:12,color:G.labelTert,textAlign:"center",lineHeight:1.9}}>
-            Estimate valid 30 days · Final price subject to on-site inspection<br/>All work performed to NEC 2023 standards
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:16,justifyContent:"center"}}>
-          <button onClick={()=>{setShowInvoice(true);setShowCustomer(false);}} style={PB}>Convert to Invoice</button>
-          <button onClick={()=>setShowCustomer(false)} style={GB}>← Back</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── LANDING PAGE ─────────────────────────────────────────────────────────────
-  if(view==="landing") return (
-    <div style={{background:G.bg,color:G.label,fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif",minHeight:"100vh"}}>
-      {/* Nav */}
-      <div style={{
-        background:"rgba(0,0,0,0.75)",
-        backdropFilter:"saturate(180%) blur(20px)",
-        WebkitBackdropFilter:"saturate(180%) blur(20px)",
-        borderBottom:`1px solid ${G.sep}`,
-        padding:"14px 32px",
-        display:"flex",justifyContent:"space-between",alignItems:"center",
-        position:"sticky",top:0,zIndex:100,
-      }}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:34,height:34,background:G.amber,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:800,color:"#000",boxShadow:`0 0 20px ${G.amberGlow}`}}>⚡</div>
-          <div>
-            <div style={{fontSize:16,fontWeight:700,color:G.label,letterSpacing:-0.5}}>VoltQuote</div>
-            <div style={{fontSize:10,color:G.labelTert,fontWeight:500}}>Electrical Estimator</div>
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10,alignItems:"center"}}>
-          <button onClick={()=>setLang(lang==="en"?"es":"en")} style={GB}>{T[lang].langBtn}</button>
-          <button onClick={()=>setView("app")} style={PB}>Try Free →</button>
-        </div>
-      </div>
-
-      {/* Hero */}
-      <div style={{
-        padding:"110px 32px 90px",
-        textAlign:"center",
-        position:"relative",
-        overflow:"hidden",
-        background:"radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,166,35,0.15) 0%, transparent 60%)",
-      }}>
-        <div style={{position:"relative",zIndex:1,maxWidth:720,margin:"0 auto"}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(245,166,35,0.1)",border:`1px solid rgba(245,166,35,0.25)`,borderRadius:40,padding:"6px 18px",marginBottom:32}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:G.amber,boxShadow:`0 0 10px ${G.amber}`}}/>
-            <span style={{fontSize:12,fontWeight:600,color:G.amber,letterSpacing:0.5}}>2026 Verified Pricing · 55+ US Markets</span>
-          </div>
-          <h1 style={{fontSize:"clamp(38px,6vw,68px)",fontWeight:800,color:G.label,lineHeight:1.05,margin:"0 0 20px",letterSpacing:-2}}>
-            Professional electrical<br/>
-            <span style={{color:G.amber}}>estimates in minutes.</span>
-          </h1>
-          <p style={{fontSize:18,color:G.labelSec,lineHeight:1.75,maxWidth:540,margin:"0 auto 48px",fontWeight:400}}>
-            Location-adjusted pricing for every US market. NEC 2023 code reference built in. AI-powered summaries. Built for electricians who work from the truck.
-          </p>
-          <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
-            <button onClick={()=>setView("app")} style={{...PB,padding:"18px 40px",fontSize:16,borderRadius:14,boxShadow:`0 0 40px ${G.amberGlow}`}}>⚡ Start Free Estimate</button>
-            <button onClick={()=>{setView("app");setTab("nec");}} style={{...GB,padding:"17px 32px",fontSize:15,borderRadius:14}}>Browse NEC 2023 →</button>
-          </div>
-          <p style={{fontSize:12,color:G.labelTert,letterSpacing:0.5}}>Free · No signup · Works offline</p>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div style={{borderTop:`1px solid ${G.sep}`,borderBottom:`1px solid ${G.sep}`}}>
-        <div style={{maxWidth:800,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)"}}>
-          {[["55+","US Cities"],["60+","Line Items"],["NEC 2023","Code Built-In"],["$0","To Start"]].map(([v,l],i)=>(
-            <div key={i} style={{padding:"28px 20px",textAlign:"center",borderRight:i<3?`1px solid ${G.sep}`:"none"}}>
-              <div style={{fontSize:26,fontWeight:800,color:G.amber,marginBottom:4,letterSpacing:-1}}>{v}</div>
-              <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Features */}
-      <div style={{maxWidth:960,margin:"0 auto",padding:"80px 24px"}}>
-        <div style={{textAlign:"center",marginBottom:56}}>
-          <h2 style={{fontSize:36,fontWeight:800,color:G.label,margin:"0 0 12px",letterSpacing:-1}}>Everything you need on the job</h2>
-          <p style={{fontSize:16,color:G.labelSec,margin:0}}>Built by electricians, for electricians.</p>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:2}}>
-          {[
-            {icon:"📍",title:"Location-Based Pricing",desc:"Rates auto-adjust for 55+ cities. Your market, your prices."},
-            {icon:"⚡",title:"60+ Line Items",desc:"Every residential job with 2026 verified pricing."},
-            {icon:"📷",title:"Photo Analysis",desc:"Upload a room photo. AI identifies what work is needed instantly."},
-            {icon:"📖",title:"NEC 2023 Reference",desc:"60+ residential articles. Plain English. Searchable. AI chat."},
-            {icon:"📊",title:"Overhead Calculator",desc:"Know your real break-even rate before you bid."},
-            {icon:"📄",title:"Invoice Generator",desc:"Estimate to professional invoice in one tap."},
-            {icon:"💬",title:"AI Code Assistant",desc:"Ask any NEC question. Get the specific article reference."},
-            {icon:"🌐",title:"English & Español",desc:"Full bilingual support. Switch in one tap."},
-          ].map((f,i)=>(
-            <div key={i} style={{background:G.surface,border:`1px solid ${G.sep}`,padding:"28px 24px",transition:"all 0.2s"}}>
-              <div style={{fontSize:28,marginBottom:16}}>{f.icon}</div>
-              <div style={{fontSize:15,fontWeight:700,color:G.label,marginBottom:8,letterSpacing:-0.3}}>{f.title}</div>
-              <div style={{fontSize:14,color:G.labelSec,lineHeight:1.7}}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Pricing */}
-      <div style={{borderTop:`1px solid ${G.sep}`,padding:"80px 24px"}}>
-        <div style={{maxWidth:620,margin:"0 auto",textAlign:"center"}}>
-          <h2 style={{fontSize:36,fontWeight:800,color:G.label,margin:"0 0 12px",letterSpacing:-1}}>Simple pricing</h2>
-          <p style={{fontSize:16,color:G.labelSec,marginBottom:48}}>Start free. Upgrade when you're ready.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2}}>
-            {[
-              {name:"Free",price:"$0",period:"forever",desc:["5 estimates / month","All core features","NEC 2023 reference","Works offline"],hi:false},
-              {name:"Pro",price:"$9.99",period:"/ month",desc:["Unlimited estimates","Saved history","Invoice generator","AI chat + photo analysis"],hi:true},
-            ].map(p=>(
-              <div key={p.name} style={{background:p.hi?G.surfaceRaised:G.surface,border:`1px solid ${p.hi?G.amberGlow:G.sep}`,borderRadius:20,padding:"32px 24px",position:"relative",overflow:"hidden",textAlign:"left"}}>
-                {p.hi&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:G.amber}}/>}
-                <div style={{fontSize:11,fontWeight:700,color:p.hi?G.amber:G.labelTert,textTransform:"uppercase",letterSpacing:2,marginBottom:14}}>{p.name}</div>
-                <div style={{fontSize:44,fontWeight:800,color:G.label,lineHeight:1,marginBottom:4,letterSpacing:-2}}>{p.price}</div>
-                <div style={{fontSize:13,color:G.labelTert,marginBottom:28}}>{p.period}</div>
-                <div style={{borderTop:`1px solid ${G.sep}`,paddingTop:20}}>
-                  {p.desc.map((d,i)=>(
-                    <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:12}}>
-                      <span style={{color:G.amber,fontSize:14,flexShrink:0,marginTop:1}}>✓</span>
-                      <span style={{fontSize:14,color:G.labelSec,lineHeight:1.5}}>{d}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div style={{padding:"80px 24px",textAlign:"center",borderTop:`1px solid ${G.sep}`}}>
-        <h2 style={{fontSize:44,fontWeight:800,color:G.label,margin:"0 0 10px",letterSpacing:-1.5}}>Your first estimate is free.</h2>
-        <p style={{fontSize:16,color:G.labelSec,margin:"0 0 40px"}}>No credit card. No signup. Start in seconds.</p>
-        <button onClick={()=>setView("app")} style={{...PB,padding:"20px 56px",fontSize:16,borderRadius:16,boxShadow:`0 0 40px ${G.amberGlow}`}}>⚡ Start Free Estimate</button>
-      </div>
-
-      <div style={{borderTop:`1px solid ${G.sep}`,padding:"20px 32px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-        <div style={{fontSize:12,color:G.labelTert}}>© 2026 VoltQuote · voltquote.app</div>
-        <div style={{fontSize:12,color:G.labelTert}}>NEC 2023 · Built for the trades</div>
-      </div>
-    </div>
-  );
-
-  // ── MAIN APP ─────────────────────────────────────────────────────────────────
-  const TB = (t,icon,l) => (
-    <button onClick={()=>setTab(t)} style={{
-      padding:"10px 14px",cursor:"pointer",fontSize:12,fontFamily:"inherit",
-      border:"none",whiteSpace:"nowrap",
-      background:tab===t?"rgba(245,166,35,0.12)":"transparent",
-      color:tab===t?G.amber:G.labelTert,
-      borderBottom:tab===t?`2px solid ${G.amber}`:"2px solid transparent",
-      fontWeight:tab===t?700:500,
-      transition:"all 0.15s",
-      display:"flex",alignItems:"center",gap:6,
-      borderRadius:tab===t?"6px 6px 0 0":"0",
-    }}><span style={{fontSize:13}}>{icon}</span>{l}</button>
-  );
-
+// ─── COUNTER ─────────────────────────────────────────────────────────────────
+function Counter({ value, onChange }) {
   return (
-    <div style={{background:G.bg,minHeight:"100svh",fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif",color:G.label}}>
-      {/* App Header */}
-      <div style={{
-        background:"rgba(0,0,0,0.8)",
-        backdropFilter:"saturate(180%) blur(20px)",
-        WebkitBackdropFilter:"saturate(180%) blur(20px)",
-        borderBottom:`1px solid ${G.sep}`,
-        padding:"0 20px",
-        position:"sticky",top:0,zIndex:100,
-      }}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,paddingTop:12,paddingBottom:4}}>
-            <button onClick={()=>setView("landing")} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:30,height:30,background:G.amber,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#000"}}>⚡</div>
-              <div style={{textAlign:"left"}}>
-                <div style={{fontSize:15,fontWeight:700,color:G.label,lineHeight:1,letterSpacing:-0.5}}>VoltQuote</div>
-                <div style={{fontSize:10,color:G.labelTert,fontWeight:500}}>Electrical Estimator</div>
-              </div>
-            </button>
-            <div style={{flex:1}}/>
-            {totalItems>0&&(
-              <div style={{background:G.amberDim,border:`1px solid ${G.amberGlow}`,borderRadius:20,padding:"4px 12px",fontSize:12,color:G.amber,fontWeight:700}}>{totalItems} items</div>
-            )}
-            <button onClick={()=>setLang(lang==="en"?"es":"en")} style={{...GB,padding:"6px 12px",fontSize:11}}>{T[lang].langBtn}</button>
-          </div>
-          <div style={{display:"flex",overflowX:"auto",gap:0,scrollbarWidth:"none"}}>
-            {TB("estimator","⚡","Estimate")}
-            {TB("sqft","📐","Sq Ft")}
-            {TB("photo","📷","Photo")}
-            {TB("overhead","💰","Overhead")}
-            {TB("contractor","🪪","Profile")}
-            {TB("ask","💬","Ask AI")}
-            {TB("history","🗂","History")}
-            {TB("nec","📖","NEC 2023")}
-          </div>
-        </div>
-      </div>
-
-      <div style={{maxWidth:900,margin:"0 auto",padding:"28px 20px"}}>
-
-        {/* ESTIMATOR */}
-        {tab==="estimator"&&<>
-          {photoAnalysis&&(
-            <div style={{background:G.greenL,border:`1px solid ${G.green}33`,borderRadius:16,padding:16,marginBottom:24}}>
-              <div style={{fontSize:11,fontWeight:700,color:G.green,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>📷 Photo Analysis</div>
-              <p style={{margin:0,fontSize:13,color:G.labelSec,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{photoAnalysis}</p>
-              <button onClick={()=>setPhotoAnalysis("")} style={{marginTop:10,fontSize:11,color:G.labelTert,background:"none",border:"none",cursor:"pointer"}}>✕ Dismiss</button>
-            </div>
-          )}
-
-          <Section title="Location & Pricing Mode">
-            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:12}}>
-              <div style={{position:"relative"}}>
-                <select value={region} onChange={e=>setRegion(e.target.value)} style={SEL}>
-                  {Object.keys(REGIONS).map(r=><option key={r} value={r}>{r}</option>)}
-                </select>
-                <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:G.labelTert,pointerEvents:"none",fontSize:12}}>▾</div>
-              </div>
-              <div style={{background:G.amberDim,border:`1px solid ${G.amberGlow}`,borderRadius:12,padding:"10px 16px",textAlign:"center",minWidth:80}}>
-                <div style={{fontSize:10,color:G.amber,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Rate</div>
-                <div style={{fontSize:20,fontWeight:800,color:G.amber,letterSpacing:-0.5}}>{rm.toFixed(2)}x</div>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {[["flat","Flat Rate"],["tm","Time & Material"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setMode(v)} style={{
-                  padding:"12px",cursor:"pointer",fontSize:13,fontFamily:"inherit",
-                  background:mode===v?G.amber:G.surfaceRaised,
-                  border:`1px solid ${mode===v?"transparent":G.sep}`,
-                  borderRadius:12,
-                  color:mode===v?"#000":G.labelSec,
-                  fontWeight:mode===v?700:500,
-                  transition:"all 0.15s",
-                }}>{l}</button>
-              ))}
-            </div>
-            {mode==="tm"&&(
-              <div style={{marginTop:12,background:G.surfaceRaised,borderRadius:12,padding:16,border:`1px solid ${G.sep}`}}>
-                <div style={{fontSize:13,color:G.labelSec,marginBottom:10,fontWeight:500}}>Hourly rate: <strong style={{color:G.amber}}>${rate}/hr</strong></div>
-                <input type="range" min={50} max={200} value={rate} onChange={e=>setRate(Number(e.target.value))} style={{width:"100%",accentColor:G.amber,height:4,cursor:"pointer"}}/>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:G.labelTert,marginTop:6}}>
-                  <span>$50</span><span>$125</span><span>$200/hr</span>
-                </div>
-              </div>
-            )}
-          </Section>
-
-          <Section title="Scope of Work">
-            {Object.entries(CATS).map(([cat,jobs])=>(
-              <div key={cat} style={{marginBottom:4}}>
-                <button onClick={()=>setExpanded(e=>({...e,[cat]:!e[cat]}))} style={{
-                  width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
-                  background:expanded[cat]?"rgba(245,166,35,0.1)":G.surfaceRaised,
-                  border:`1px solid ${expanded[cat]?G.amberGlow:G.sep}`,
-                  borderRadius:expanded[cat]?"12px 12px 0 0":"12px",
-                  padding:"13px 16px",cursor:"pointer",transition:"all 0.15s",
-                }}>
-                  <span style={{fontSize:13,fontWeight:700,color:expanded[cat]?G.amber:G.label,letterSpacing:-0.2}}>{cat}</span>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    {Object.keys(jobs).some(k=>qty[k]>0)&&(
-                      <span style={{fontSize:11,background:G.amber,color:"#000",borderRadius:20,padding:"2px 10px",fontWeight:700}}>{Object.keys(jobs).filter(k=>qty[k]>0).length}</span>
-                    )}
-                    <span style={{color:expanded[cat]?G.amber:G.labelTert,fontSize:11}}>{expanded[cat]?"▲":"▼"}</span>
-                  </div>
-                </button>
-                {expanded[cat]&&(
-                  <div style={{border:`1px solid ${G.amberGlow}`,borderTop:"none",borderRadius:"0 0 12px 12px",overflow:"hidden"}}>
-                    {Object.entries(jobs).map(([key,job],idx)=>(
-                      <div key={key} style={{
-                        display:"flex",alignItems:"center",justifyContent:"space-between",
-                        padding:"12px 16px",
-                        background:qty[key]>0?G.amberDim:idx%2===0?G.surface:G.surfaceRaised,
-                        borderBottom:`1px solid ${G.sep}`,
-                      }}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:14,color:qty[key]>0?G.label:G.labelSec,marginBottom:3,fontWeight:qty[key]>0?600:400}}>{job.label}</div>
-                          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                            <span style={{fontSize:11,color:G.labelTert,fontWeight:500}}>{fmt(Math.round(job.low*rm))}–{fmt(Math.round(job.high*rm))}/{job.unit}</span>
-                            <span style={{fontSize:11,color:G.labelTert}}>~{job.hours}h</span>
-                            {job.nec&&(
-                              <span onClick={()=>setTab("nec")} style={{fontSize:11,background:G.blueL,color:G.blue,borderRadius:6,padding:"2px 8px",fontWeight:600,cursor:"pointer"}}>§{job.nec}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                          <button onClick={()=>setQty(q=>({...q,[key]:Math.max(0,(q[key]||0)-1)}))} style={QB}>−</button>
-                          <span style={{minWidth:30,textAlign:"center",fontSize:16,fontWeight:800,color:qty[key]>0?G.amber:G.labelTert,fontFamily:"monospace"}}>{qty[key]||0}</span>
-                          <button onClick={()=>setQty(q=>({...q,[key]:(q[key]||0)+1}))} style={QB}>+</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </Section>
-
-          <Section title="Job Conditions">
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {Object.entries(CONDS).map(([key,c])=>(
-                <label key={key} style={{
-                  display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",
-                  background:cond[key]?G.amberDim:G.surfaceRaised,
-                  border:`1px solid ${cond[key]?G.amberGlow:G.sep}`,
-                  borderRadius:12,padding:"12px 14px",transition:"all 0.15s",
-                }}>
-                  <input type="checkbox" checked={!!cond[key]} onChange={e=>setCond(x=>({...x,[key]:e.target.checked}))} style={{accentColor:G.amber,width:15,height:15,marginTop:2}}/>
-                  <div>
-                    <div style={{fontSize:13,color:G.label,fontWeight:500,marginBottom:3}}>{c.label}</div>
-                    <div style={{fontSize:11,color:c.clr,fontWeight:700}}>{c.sign}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </Section>
-
-          <Section title="Pricing Options">
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              {[{l:"Include materials markup",s:incMat,set:setIncMat},{l:"Include permit & inspection",s:incPermit,set:setIncPermit}].map(o=>(
-                <label key={o.l} style={{
-                  display:"flex",alignItems:"center",gap:10,cursor:"pointer",
-                  background:o.s?G.amberDim:G.surfaceRaised,
-                  border:`1px solid ${o.s?G.amberGlow:G.sep}`,
-                  borderRadius:12,padding:"12px 14px",transition:"all 0.15s",
-                }}>
-                  <input type="checkbox" checked={o.s} onChange={e=>o.set(e.target.checked)} style={{accentColor:G.amber,width:15,height:15}}/>
-                  <span style={{fontSize:13,color:G.labelSec,fontWeight:500}}>{o.l}</span>
-                </label>
-              ))}
-            </div>
-            {incMat&&(
-              <div style={{background:G.surfaceRaised,borderRadius:12,padding:16,border:`1px solid ${G.sep}`}}>
-                <div style={{fontSize:13,color:G.labelSec,marginBottom:10,fontWeight:500}}>Materials markup: <strong style={{color:G.amber}}>{markup}%</strong></div>
-                <input type="range" min={0} max={50} value={markup} onChange={e=>setMarkup(Number(e.target.value))} style={{width:"100%",accentColor:G.amber,cursor:"pointer"}}/>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:G.labelTert,marginTop:6}}>
-                  <span>0%</span><span>25%</span><span>50%</span>
-                </div>
-              </div>
-            )}
-          </Section>
-
-          <button onClick={calculate} disabled={!hasItems} style={{
-            width:"100%",padding:"18px",marginBottom:28,
-            background:hasItems?G.amber:G.surfaceRaised,
-            border:"none",borderRadius:14,cursor:hasItems?"pointer":"not-allowed",
-            fontSize:15,fontWeight:700,color:hasItems?"#000":G.labelTert,
-            boxShadow:hasItems?`0 0 40px ${G.amberGlow}`:"none",
-            transition:"all 0.2s",letterSpacing:-0.2,
-          }}>
-            {hasItems?"⚡ Generate Estimate":"Select items above to begin"}
-          </button>
-
-          {result&&(
-            <div style={{background:G.surface,border:`1px solid ${G.sep}`,borderRadius:20,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}>
-              {/* Result header */}
-              <div style={{padding:"18px 20px",borderBottom:`1px solid ${G.sep}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-                <div>
-                  <div style={{fontSize:12,color:G.amber,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>Estimate Ready</div>
-                  <div style={{fontSize:12,color:G.labelTert}}>{result.region} · {rm.toFixed(2)}x · {result.date}</div>
-                </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {[
-                    {label:"👤 Client",fn:()=>setShowCustomer(true)},
-                    {label:"📄 Invoice",fn:()=>setShowInvoice(true)},
-                    {label:savedOk?"✓ Saved":"💾 Save",fn:saveEst,ok:savedOk},
-                    {label:copied?"✓ Copied":"📋 Copy",fn:copyQuote,primary:true,ok:copied},
-                  ].map(btn=>(
-                    <button key={btn.label} onClick={btn.fn} style={{
-                      background:btn.ok?G.greenL:btn.primary?G.amberDim:G.surfaceRaised,
-                      color:btn.ok?G.green:btn.primary?G.amber:G.labelSec,
-                      border:`1px solid ${btn.ok?G.green+"44":btn.primary?G.amberGlow:G.sep}`,
-                      borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",transition:"all 0.15s",
-                    }}>{btn.label}</button>
-                  ))}
-                </div>
-              </div>
-              {/* Line items */}
-              {result.items.map((item,i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:`1px solid ${G.sep}`,background:i%2===0?G.surface:G.surfaceRaised}}>
-                  <div>
-                    <span style={{fontSize:14,color:G.label,fontWeight:500}}>{item.label}</span>
-                    {item.qty&&<span style={{fontSize:11,color:G.labelTert,marginLeft:8}}>×{item.qty}</span>}
-                    {item.hrs>0&&<span style={{fontSize:11,color:G.labelTert,marginLeft:6}}>{item.hrs}h</span>}
-                    {item.nec&&<span style={{fontSize:10,background:G.blueL,color:G.blue,borderRadius:4,padding:"1px 6px",marginLeft:8,fontWeight:600}}>§{item.nec}</span>}
-                  </div>
-                  <div style={{fontSize:14,color:G.label,fontWeight:600,fontFamily:"monospace",flexShrink:0}}>{fmtR(item.low,item.high)}</div>
-                </div>
-              ))}
-              {/* Total bar */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px",borderTop:`1px solid ${G.sepStrong}`,background:G.surfaceRaised}}>
-                <div>
-                  <div style={{fontSize:15,fontWeight:700,color:G.label}}>Total Estimate</div>
-                  <div style={{fontSize:12,color:G.labelTert,marginTop:2}}>~{result.tHrs} labor hours · Est. materials: {fmt(result.tMat)}</div>
-                </div>
-                <div style={{fontSize:28,fontWeight:800,color:G.amber,fontFamily:"monospace",letterSpacing:-1}}>
-                  {result.mode==="tm"?fmt(result.tm):`${fmt(result.tLo)}–${fmt(result.tHi)}`}
-                </div>
-              </div>
-              {/* AI Summary */}
-              <div style={{padding:"18px 20px",background:G.amberDim,borderTop:`1px solid ${G.amberGlow}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:G.amber,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Professional Summary</div>
-                {loading
-                  ?<div style={{fontSize:13,color:G.labelTert,fontStyle:"italic"}}>Generating summary...</div>
-                  :<p style={{margin:0,fontSize:14,color:G.labelSec,lineHeight:1.8}}>{aiSum}</p>}
-              </div>
-            </div>
-          )}
-        </>}
-
-        {/* SQ FT */}
-        {tab==="sqft"&&<Section title="Quick Estimate by Square Footage">
-          <p style={{fontSize:14,color:G.labelSec,marginTop:0,lineHeight:1.7,marginBottom:24}}>Select home size to auto-populate a typical rough-in scope. Refine from there.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {Object.entries(SQFT_PRESETS).map(([name,preset])=>(
-              <button key={name} onClick={()=>{setQty(q=>({...q,...preset}));setTab("estimator");setExpanded({"Wiring Devices":true,"Lighting":true,"Safety Devices":true});}} style={{
-                background:G.surfaceRaised,border:`1px solid ${G.sep}`,
-                borderRadius:16,padding:"20px",cursor:"pointer",textAlign:"left",transition:"all 0.2s",
-              }}>
-                <div style={{fontSize:14,fontWeight:700,color:G.label,marginBottom:8,letterSpacing:-0.3}}>{name}</div>
-                <div style={{fontSize:12,color:G.labelTert,lineHeight:1.8}}>
-                  {Object.entries(preset).slice(0,3).map(([k,v])=>`${v}× ${k}`).join(" · ")}
-                </div>
-                <div style={{marginTop:12,fontSize:13,fontWeight:700,color:G.amber}}>Apply to Estimate →</div>
-              </button>
-            ))}
-          </div>
-        </Section>}
-
-        {/* PHOTO */}
-        {tab==="photo"&&<Section title="Photo-to-Estimate">
-          <p style={{fontSize:14,color:G.labelSec,marginTop:0,lineHeight:1.7}}>Upload a photo of any room, panel, or electrical area and AI identifies what work may be needed.</p>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
-          <button onClick={()=>fileRef.current?.click()} disabled={photoLoading} style={{
-            width:"100%",padding:48,
-            border:`2px dashed ${G.amberGlow}`,
-            borderRadius:16,background:G.amberDim,cursor:"pointer",
-            color:photoLoading?G.labelTert:G.amber,
-            fontSize:15,fontWeight:600,transition:"all 0.2s",
-          }}>
-            {photoLoading?"🔍 Analyzing photo...":"📷 Upload Room / Area Photo"}
-          </button>
-          {photoAnalysis&&(
-            <div style={{marginTop:16,background:G.surface,border:`1px solid ${G.sep}`,borderRadius:16,padding:20}}>
-              <div style={{fontSize:11,fontWeight:700,color:G.amber,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>AI Analysis</div>
-              <p style={{margin:0,fontSize:14,color:G.labelSec,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{photoAnalysis}</p>
-              <button onClick={()=>setTab("estimator")} style={{...PB,marginTop:16,fontSize:13}}>→ Build Estimate</button>
-            </div>
-          )}
-        </Section>}
-
-        {/* OVERHEAD */}
-        {tab==="overhead"&&<Section title="Overhead & True Cost Calculator">
-          <p style={{fontSize:14,color:G.labelSec,marginTop:0,lineHeight:1.7,marginBottom:20}}>Enter your monthly business costs to calculate your real break-even hourly rate.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-            {[{k:"insurance",l:"Liability Insurance /mo"},{k:"vehicle",l:"Vehicle / Gas /mo"},{k:"tools",l:"Tools / Equipment /mo"},{k:"phone",l:"Phone / Software /mo"},{k:"misc",l:"Misc Overhead /mo"}].map(f=>(
-              <div key={f.k}>
-                <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{f.l}</div>
-                <div style={{display:"flex",alignItems:"center",border:`1px solid ${G.sep}`,borderRadius:10,overflow:"hidden",background:G.surfaceRaised}}>
-                  <span style={{padding:"0 12px",color:G.amber,fontSize:15,fontWeight:700,borderRight:`1px solid ${G.sep}`,background:G.amberDim,alignSelf:"stretch",display:"flex",alignItems:"center"}}>$</span>
-                  <input type="number" value={overhead[f.k]} onChange={e=>setOverhead(o=>({...o,[f.k]:Number(e.target.value)||0}))} style={{flex:1,background:"transparent",border:"none",color:G.label,fontSize:14,padding:"11px 12px",outline:"none",fontFamily:"inherit"}}/>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-            <div>
-              <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Billable Hours / Month</div>
-              <input type="number" value={targetHrs} onChange={e=>setTargetHrs(Number(e.target.value)||1)} style={{...SEL}}/>
-            </div>
-            <div>
-              <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Desired Profit %</div>
-              <input type="number" value={profitPct} onChange={e=>setProfitPct(Number(e.target.value)||0)} style={{...SEL}}/>
-            </div>
-          </div>
-          <div style={{background:G.surfaceRaised,borderRadius:16,padding:24,border:`1px solid ${G.sep}`}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,textAlign:"center",marginBottom:20}}>
-              {[["Monthly Overhead",fmt(totalOh),G.red],["Break-Even Rate","$"+Math.ceil(totalOh/targetHrs)+"/hr",G.orange],["Your True Rate","$"+trueRate+"/hr",G.amber]].map(([l,v,c])=>(
-                <div key={l}>
-                  <div style={{fontSize:10,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>{l}</div>
-                  <div style={{fontSize:24,fontWeight:800,color:c,fontFamily:"monospace",letterSpacing:-1}}>{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{borderTop:`1px solid ${G.sep}`,paddingTop:16,fontSize:13,color:G.labelTert,textAlign:"center",lineHeight:1.8}}>
-              Your true rate includes overhead recovery + {profitPct}% profit margin.
-            </div>
-            <div style={{textAlign:"center",marginTop:14}}>
-              <button onClick={()=>{setRate(trueRate);setMode("tm");setTab("estimator");}} style={GB}>→ Apply to T&M Estimator</button>
-            </div>
-          </div>
-        </Section>}
-
-        {/* CONTRACTOR */}
-        {tab==="contractor"&&<Section title="Contractor Profile">
-          <p style={{fontSize:14,color:G.labelSec,marginTop:0,lineHeight:1.7}}>Your info appears on client-facing quotes and invoices.</p>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            {[{l:"Company / Name",v:cName,set:setCName,ph:"Smith Electric LLC"},{l:"Phone",v:cPhone,set:setCPhone,ph:"(607) 555-0100"},{l:"Email",v:cEmail,set:setCEmail,ph:"you@email.com"},{l:"License #",v:cLic,set:setCLic,ph:"ME-12345"},{l:"City",v:cCity,set:setCCity,ph:"Binghamton"}].map(f=>(
-              <div key={f.l}>
-                <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{f.l}</div>
-                <input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{...SEL,fontSize:14}} />
-              </div>
-            ))}
-            <div>
-              <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>State</div>
-              <div style={{position:"relative"}}>
-                <select value={cState} onChange={e=>setCState(e.target.value)} style={SEL}>
-                  {US_STATES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-                <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:G.labelTert,pointerEvents:"none",fontSize:12}}>▾</div>
-              </div>
-            </div>
-          </div>
-          {cName&&(
-            <div style={{marginTop:24,background:G.surfaceRaised,borderRadius:16,padding:24,border:`1px solid ${G.sep}`}}>
-              <div style={{fontSize:11,fontWeight:700,color:G.amber,textTransform:"uppercase",letterSpacing:1,marginBottom:14}}>Profile Preview</div>
-              <div style={{fontSize:18,fontWeight:700,color:G.label,letterSpacing:-0.5}}>{cName}</div>
-              {cPhone&&<div style={{fontSize:14,color:G.labelSec,marginTop:5}}>📞 {cPhone}</div>}
-              {cEmail&&<div style={{fontSize:14,color:G.labelSec}}>✉️ {cEmail}</div>}
-              {cLic&&<div style={{fontSize:13,color:G.amber,marginTop:5,fontWeight:600}}>License #{cLic}</div>}
-              {(cCity||cState)&&<div style={{fontSize:13,color:G.labelTert,marginTop:3}}>{[cCity,cState].filter(Boolean).join(", ")}</div>}
-            </div>
-          )}
-          <div style={{marginTop:24}}>
-            <div style={{fontSize:11,color:G.labelTert,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:14}}>Invoice Defaults</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <div>
-                <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Default Client Name</div>
-                <input value={invoiceClient} onChange={e=>setInvoiceClient(e.target.value)} placeholder="Customer name" style={{...SEL,fontSize:14}}/>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Payment Terms</div>
-                <div style={{position:"relative"}}>
-                  <select value={invoiceDue} onChange={e=>setInvoiceDue(Number(e.target.value))} style={SEL}>
-                    {[15,30,45,60].map(d=><option key={d} value={d}>Net {d} days</option>)}
-                  </select>
-                  <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:G.labelTert,pointerEvents:"none",fontSize:12}}>▾</div>
-                </div>
-              </div>
-              <div style={{gridColumn:"1/-1"}}>
-                <div style={{fontSize:11,color:G.labelTert,fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Invoice Notes / Terms</div>
-                <textarea value={invoiceNotes} onChange={e=>setInvoiceNotes(e.target.value)} placeholder="e.g. 50% deposit required. Balance due on completion." style={{...SEL,height:80,resize:"vertical",lineHeight:1.6}}/>
-              </div>
-            </div>
-          </div>
-        </Section>}
-
-        {/* ASK AI */}
-        {tab==="ask"&&<Section title="Ask the AI Electrician">
-          <p style={{fontSize:14,color:G.labelSec,marginTop:0,lineHeight:1.7}}>Ask any code or pricing question. Gets a specific NEC article reference every time.</p>
-          <div style={{background:G.surfaceRaised,border:`1px solid ${G.sep}`,borderRadius:16,padding:16,minHeight:280,maxHeight:400,overflowY:"auto",marginBottom:12}}>
-            {chatHistory.length===0&&(
-              <div style={{color:G.labelTert,fontSize:14,textAlign:"center",marginTop:60,lineHeight:2}}>
-                e.g. "Where is GFCI required?" or "What wire for a dryer circuit?"
-              </div>
-            )}
-            {chatHistory.map((m,i)=>(
-              <div key={i} style={{marginBottom:14,display:"flex",gap:10,justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                {m.role==="assistant"&&(
-                  <div style={{width:30,height:30,background:G.amber,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#000",flexShrink:0}}>⚡</div>
-                )}
-                <div style={{
-                  maxWidth:"82%",
-                  background:m.role==="user"?G.amberDim:G.surface,
-                  border:`1px solid ${m.role==="user"?G.amberGlow:G.sep}`,
-                  borderRadius:14,padding:"11px 16px",
-                  fontSize:14,color:m.role==="user"?G.label:G.labelSec,
-                  lineHeight:1.7,
-                }}>
-                  {m.content}
-                </div>
-              </div>
-            ))}
-            {chatLoading&&<div style={{color:G.labelTert,fontSize:13,fontStyle:"italic"}}>⚡ Looking up code...</div>}
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendChat()} placeholder="Ask any NEC 2023 question..." style={{...SEL,flex:1,fontSize:14}}/>
-            <button onClick={sendChat} disabled={!chatInput.trim()||chatLoading} style={{...PB,opacity:chatInput.trim()?1:0.4,flexShrink:0}}>Ask</button>
-          </div>
-        </Section>}
-
-        {/* HISTORY */}
-        {tab==="history"&&<Section title="Saved Estimates">
-          {history.length===0?(
-            <div style={{textAlign:"center",color:G.labelTert,fontSize:14,padding:48}}>No saved estimates yet. Generate one and hit Save.</div>
-          ):history.map(est=>(
-            <div key={est.id} style={{background:G.surfaceRaised,border:`1px solid ${G.sep}`,borderRadius:16,padding:18,marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:700,color:G.label,fontFamily:"monospace"}}>{est.id}</div>
-                  <div style={{fontSize:12,color:G.labelTert,marginTop:2}}>{est.date} · {est.region}</div>
-                </div>
-                <div style={{fontSize:18,fontWeight:800,color:G.amber,fontFamily:"monospace",letterSpacing:-0.5}}>{est.mode==="tm"?fmt(est.tm):`${fmt(est.tLo)}–${fmt(est.tHi)}`}</div>
-              </div>
-              <div style={{fontSize:12,color:G.labelTert,marginBottom:14,lineHeight:1.7}}>{est.items.filter(i=>i.qty).map(i=>`${i.label}×${i.qty}`).join(" · ")}</div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>{setResult(est);setAiSum(est.summary||"");setTab("estimator");}} style={PB}>Load</button>
-                <button onClick={()=>{const u=history.filter(e=>e.id!==est.id);setHistory(u);try{localStorage.setItem("vq_hist2",JSON.stringify(u));}catch{};}} style={{...GB,color:G.red,borderColor:G.red+"44"}}>Delete</button>
-              </div>
-            </div>
-          ))}
-        </Section>}
-
-        {/* NEC */}
-        {tab==="nec"&&<Section title="NEC 2023 — Complete Residential Reference">
-          <NECReference/>
-        </Section>}
-
-        <div style={{textAlign:"center",marginTop:32,paddingTop:20,borderTop:`1px solid ${G.sep}`}}>
-          <div style={{fontSize:11,color:G.labelTert}}>{T[lang].disclaimer}</div>
-        </div>
-      </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        *{-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
-        input,select,textarea{-webkit-appearance:none;color-scheme:dark;}
-        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',system-ui,sans-serif;background:#000000;}
-        select option{background:#1c1c1e;color:#ffffff;}
-        ::-webkit-scrollbar{width:0;height:0;}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        ::selection{background:rgba(245,166,35,0.3);color:#ffffff;}
-        input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(245,166,35,0.5)!important;box-shadow:0 0 0 3px rgba(245,166,35,0.1)!important;}
-        input::placeholder,textarea::placeholder{color:rgba(235,235,245,0.25);}
-        @supports(-webkit-touch-callout:none){input,select,textarea{font-size:16px;}}
-        @media print{button{display:none!important}}
-        button:active{transform:scale(0.97);}
-      `}</style>
+    <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.04)", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", overflow:"hidden" }}>
+      {[{ sym:"−", fn:() => onChange(Math.max(0, value-1)), dis: value===0 }, { sym:"+", fn:() => onChange(value+1), dis: false }].map(({ sym, fn, dis }) => (
+        <button key={sym} onClick={fn} style={{ width:28, height:28, border:"none", background:"transparent", color: dis ? "rgba(255,255,255,0.15)" : "#e8c97a", fontSize:17, cursor: dis ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit", transition:"background 0.15s" }}
+          onMouseEnter={e => { if (!dis) e.currentTarget.style.background="rgba(232,201,122,0.1)"; }}
+          onMouseLeave={e => e.currentTarget.style.background="transparent"}
+        >{sym}</button>
+      ))}
+      <span style={{ width:24, textAlign:"center", fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:600, color:"#fff" }}>{value}</span>
     </div>
   );
 }
 
-function Section({title,children}){
-  return(
-    <div style={{marginBottom:28}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-        <h3 style={{margin:0,fontSize:11,fontWeight:700,color:"rgba(235,235,245,0.3)",textTransform:"uppercase",letterSpacing:1.5,whiteSpace:"nowrap"}}>{title}</h3>
-        <div style={{flex:1,height:"1px",background:"linear-gradient(90deg,rgba(255,255,255,0.08),transparent)"}}/>
+// ─── SERVICE ROW ─────────────────────────────────────────────────────────────
+function ServiceRow({ service, entry, onUpdate, accentColor, hourlyRate, clientBuys, showMaterials }) {
+  const qty        = entry?.qty ?? 0;
+  const variantIdx = entry?.variantIdx ?? 0;
+  const cBuys      = entry?.clientBuys ?? clientBuys; // per-line override
+
+  const v   = service.variants[variantIdx];
+  const mat = service.materialCost * v.m * Math.max(qty, 1);
+  const lab = service.laborCost    * v.m * Math.max(qty, 1);
+
+  return (
+    <div style={{ borderBottom:"1px solid rgba(255,255,255,0.04)", padding:"11px 0", transition:"all 0.2s" }}>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+        {/* Name col */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:600, color: qty>0 ? "#fff" : "rgba(255,255,255,0.58)", lineHeight:1.3, letterSpacing:"-0.01em" }}>
+            {service.label}
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:3, flexWrap:"wrap" }}>
+            <span style={{ fontSize:9, fontFamily:"'DM Mono',monospace", color:"rgba(255,255,255,0.28)", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.03em" }}>{service.nec}</span>
+            <span style={{ fontSize:9, color:"rgba(255,255,255,0.22)", fontFamily:"'DM Mono',monospace" }}>
+              mat ${service.materialCost} · lab ${service.laborCost}/{service.unit}
+            </span>
+          </div>
+        </div>
+
+        {/* Right controls */}
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5, flexShrink:0 }}>
+          {/* Qty counter */}
+          <Counter value={qty} onChange={v => onUpdate({ qty: v, variantIdx, clientBuys: cBuys })} />
+
+          {qty > 0 && (
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:3 }}>
+              {/* Variant */}
+              {service.variants.length > 1 && (
+                <select value={variantIdx} onChange={e => onUpdate({ qty, variantIdx: Number(e.target.value), clientBuys: cBuys })}
+                  style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:5, color:"#e8c97a", fontSize:10, padding:"3px 5px", fontFamily:"inherit", cursor:"pointer", maxWidth:130 }}>
+                  {service.variants.map((v,i) => <option key={i} value={i} style={{ background:"#1a1a1e" }}>{v.label}</option>)}
+                </select>
+              )}
+
+              {/* Who buys parts toggle */}
+              <div style={{ display:"flex", gap:3 }}>
+                {[{ lbl:"I buy parts", val: false }, { lbl:"Client buys", val: true }].map(opt => (
+                  <button key={String(opt.val)} onClick={() => onUpdate({ qty, variantIdx, clientBuys: opt.val })}
+                    style={{ padding:"2px 7px", borderRadius:4, fontSize:9, fontWeight:700, letterSpacing:"0.02em", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s",
+                      border: cBuys===opt.val ? `1px solid ${accentColor}60` : "1px solid rgba(255,255,255,0.08)",
+                      background: cBuys===opt.val ? `${accentColor}15` : "rgba(255,255,255,0.03)",
+                      color: cBuys===opt.val ? accentColor : "rgba(255,255,255,0.35)" }}>
+                    {opt.lbl}
+                  </button>
+                ))}
+              </div>
+
+              {/* Line cost pills */}
+              <div style={{ display:"flex", gap:4, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                {showMaterials && !cBuys && (
+                  <span style={{ fontSize:9, fontFamily:"'DM Mono',monospace", color:"rgba(255,255,255,0.4)", background:"rgba(255,255,255,0.05)", padding:"2px 6px", borderRadius:4 }}>
+                    mat ${(service.materialCost * service.variants[variantIdx].m * qty).toLocaleString()}
+                  </span>
+                )}
+                <span style={{ fontSize:9, fontFamily:"'DM Mono',monospace", color:"rgba(162,220,160,0.8)", background:"rgba(162,220,160,0.08)", padding:"2px 6px", borderRadius:4 }}>
+                  lab ${(service.laborCost * service.variants[variantIdx].m * qty).toLocaleString()}
+                </span>
+                <span style={{ fontSize:10, fontFamily:"'DM Mono',monospace", fontWeight:700, color: accentColor, padding:"2px 6px", background:`${accentColor}12`, borderRadius:4, border:`1px solid ${accentColor}25` }}>
+                  ${((cBuys ? service.laborCost : (service.materialCost + service.laborCost)) * service.variants[variantIdx].m * qty).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-      {children}
     </div>
+  );
+}
+
+// ─── CATEGORY SECTION ─────────────────────────────────────────────────────────
+function CategorySection({ category, entries, onUpdate, hourlyRate, clientBuys, showMaterials }) {
+  const [open, setOpen] = useState(false);
+  const active = category.services.filter(s => entries[s.id]?.qty > 0).length;
+
+  return (
+    <div style={{ background: active>0 ? `linear-gradient(135deg,${category.color}07 0%,rgba(255,255,255,0.015) 100%)` : "rgba(255,255,255,0.018)", border: active>0 ? `1px solid ${category.color}25` : "1px solid rgba(255,255,255,0.055)", borderRadius:13, overflow:"hidden", transition:"all 0.25s", marginBottom:8 }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"13px 16px", background:"transparent", border:"none", cursor:"pointer", textAlign:"left" }}>
+        <div style={{ width:30, height:30, borderRadius:7, flexShrink:0, background: active>0 ? `${category.color}18` : "rgba(255,255,255,0.05)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, color: active>0 ? category.color : "rgba(255,255,255,0.28)", transition:"all 0.2s" }}>{category.icon}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:13, fontWeight:700, color: active>0 ? "#fff" : "rgba(255,255,255,0.55)", fontFamily:"'Syne',sans-serif", letterSpacing:"-0.01em" }}>{category.label}</div>
+          <div style={{ fontSize:10, color:"rgba(255,255,255,0.28)", marginTop:1, fontFamily:"'DM Mono',monospace" }}>
+            {category.services.length} services{active>0 && <span style={{ color:category.color, marginLeft:5 }}>· {active} selected</span>}
+          </div>
+        </div>
+        {active>0 && <span style={{ fontSize:10, fontWeight:700, color:category.color, background:`${category.color}15`, border:`1px solid ${category.color}30`, padding:"2px 7px", borderRadius:8, fontFamily:"'DM Mono',monospace" }}>{active}</span>}
+        <span style={{ color:"rgba(255,255,255,0.28)", fontSize:16, transform: open ? "rotate(90deg)" : "rotate(0deg)", transition:"transform 0.2s", lineHeight:1 }}>›</span>
+      </button>
+      {open && (
+        <div style={{ padding:"0 16px 12px" }}>
+          {category.services.map(s => (
+            <ServiceRow key={s.id} service={s} entry={entries[s.id]} onUpdate={d => onUpdate(s.id, d)}
+              accentColor={category.color} hourlyRate={hourlyRate} clientBuys={clientBuys} showMaterials={showMaterials} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PILL BUTTON ─────────────────────────────────────────────────────────────
+function Pill({ label, active, onClick, color = "#e8c97a" }) {
+  return (
+    <button onClick={onClick} style={{ padding:"5px 11px", borderRadius:6, fontSize:12, fontWeight:600, border: active ? `1px solid ${color}55` : "1px solid rgba(255,255,255,0.09)", background: active ? `${color}13` : "rgba(255,255,255,0.04)", color: active ? color : "rgba(255,255,255,0.4)", cursor:"pointer", transition:"all 0.15s", fontFamily:"inherit" }}>{label}</button>
+  );
+}
+
+// ─── STAT CARD ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub, color = "#e8c97a" }) {
+  return (
+    <div style={{ flex:1, minWidth:100, background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"12px 14px" }}>
+      <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>{label}</div>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color, letterSpacing:"-0.02em" }}>{value}</div>
+      {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.25)", marginTop:3, fontFamily:"'DM Mono',monospace" }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ─── NEC REFERENCE COMPONENT ─────────────────────────────────────────────────
+function NECReference() {
+  const [search, setSearch]         = useState("");
+  const [expanded, setExpanded]     = useState({});
+  const [expandedRule, setExpandedRule] = useState({});
+  const [filterTag, setFilterTag]   = useState("all");
+
+  const TAGS = [
+    { id: "all",     label: "All Articles" },
+    { id: "gfci",    label: "GFCI" },
+    { id: "afci",    label: "AFCI" },
+    { id: "ground",  label: "Grounding" },
+    { id: "panel",   label: "Panel/Service" },
+    { id: "wiring",  label: "Wiring Methods" },
+    { id: "outlets", label: "Outlets/Switches" },
+    { id: "lighting",label: "Lighting" },
+    { id: "hvac",    label: "HVAC/Appliances" },
+    { id: "outdoor", label: "Outdoor/Pool/EV" },
+    { id: "new2023", label: "New in 2023" },
+  ];
+
+  const TAG_ARTICLE_MAP = {
+    gfci:     ["210", "406", "680"],
+    afci:     ["210", "404"],
+    ground:   ["250", "200"],
+    panel:    ["408", "230", "240", "215"],
+    wiring:   ["300", "310", "334", "358", "110"],
+    outlets:  ["406", "404", "210"],
+    lighting: ["410", "314"],
+    hvac:     ["440", "422", "550"],
+    outdoor:  ["225", "680", "625", "702"],
+    new2023:  ["230", "410", "404", "625", "210"],
+  };
+
+  const q = search.toLowerCase().trim();
+
+  const filtered = NEC_REF.filter(art => {
+    const matchesTag = filterTag === "all" || (TAG_ARTICLE_MAP[filterTag] || []).includes(art.article);
+    if (!matchesTag) return false;
+    if (!q) return true;
+    return (
+      art.article.includes(q) ||
+      art.title.toLowerCase().includes(q) ||
+      art.summary.toLowerCase().includes(q) ||
+      art.rules.some(r => r.title.toLowerCase().includes(q) || r.text.toLowerCase().includes(q) || r.code.toLowerCase().includes(q)) ||
+      (art.violations || []).some(v => v.toLowerCase().includes(q))
+    );
+  });
+
+  const toggleArticle = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
+  const toggleRule = (key) => setExpandedRule(p => ({ ...p, [key]: !p[key] }));
+
+  return (
+    <div style={{ animation: "fadeUp 0.3s ease both" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 10, lineHeight: 1.6 }}>
+          Full NEC 2023 residential reference · {NEC_REF.length} articles · {NEC_REF.reduce((a, c) => a + c.rules.length, 0)} code sections · searchable
+        </div>
+
+        {/* Search */}
+        <input
+          placeholder="Search article, code number, or keyword (e.g. GFCI, 210.8, tamper)..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, padding: "11px 14px", fontSize: 13, color: "#fff", fontFamily: "inherit", marginBottom: 10, transition: "border-color 0.15s" }}
+          onFocus={e => e.target.style.borderColor = "rgba(232,201,122,0.4)"}
+          onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+        />
+
+        {/* Filter tags */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+          {TAGS.map(t => (
+            <button key={t.id} onClick={() => setFilterTag(t.id)}
+              style={{ padding: "4px 10px", borderRadius: 5, fontSize: 10, fontWeight: 700, letterSpacing: "0.03em", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                border: filterTag === t.id ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                background: filterTag === t.id ? "rgba(232,201,122,0.12)" : "rgba(255,255,255,0.03)",
+                color: filterTag === t.id ? "#e8c97a" : "rgba(255,255,255,0.38)" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results count */}
+      {(q || filterTag !== "all") && (
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace", marginBottom: 12 }}>
+          {filtered.length} article{filtered.length !== 1 ? "s" : ""} · {filtered.reduce((a, c) => a + c.rules.length, 0)} code sections
+        </div>
+      )}
+
+      {/* Article cards */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(255,255,255,0.2)", fontSize: 13 }}>
+          No results for "{search}"
+        </div>
+      ) : (
+        filtered.map(art => {
+          const isOpen = expanded[art.article];
+          return (
+            <div key={art.article} style={{ background: isOpen ? `linear-gradient(135deg,${art.color}06 0%,rgba(255,255,255,0.015) 100%)` : "rgba(255,255,255,0.018)", border: isOpen ? `1px solid ${art.color}22` : "1px solid rgba(255,255,255,0.055)", borderRadius: 13, marginBottom: 8, overflow: "hidden", transition: "all 0.25s" }}>
+
+              {/* Article header */}
+              <button onClick={() => toggleArticle(art.article)} style={{ width: "100%", display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
+                <div style={{ flexShrink: 0, width: 46, height: 46, borderRadius: 8, background: `${art.color}15`, border: `1px solid ${art.color}25`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: art.color, fontWeight: 700, letterSpacing: "0.02em" }}>ART.</div>
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, color: art.color, fontWeight: 700, lineHeight: 1 }}>{art.article}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", fontFamily: "'Syne',sans-serif", letterSpacing: "-0.01em", lineHeight: 1.2 }}>{art.title}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4, lineHeight: 1.5 }}>{art.summary.slice(0, 100)}{art.summary.length > 100 ? "…" : ""}</div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 5, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontFamily: "'DM Mono',monospace" }}>{art.rules.length} sections</span>
+                    {art.violations?.length > 0 && <span style={{ fontSize: 9, color: "rgba(232,120,120,0.6)", fontFamily: "'DM Mono',monospace" }}>· {art.violations.length} common violations</span>}
+                  </div>
+                </div>
+                <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 16, transform: isOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s", lineHeight: 1, flexShrink: 0 }}>›</span>
+              </button>
+
+              {/* Article content */}
+              {isOpen && (
+                <div style={{ padding: "0 16px 16px" }}>
+                  {/* Full summary */}
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    {art.summary}
+                  </div>
+
+                  {/* Code sections */}
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Code Sections</div>
+                  {art.rules.map((rule, ri) => {
+                    const rKey = `${art.article}-${ri}`;
+                    const rOpen = expandedRule[rKey];
+                    return (
+                      <div key={ri} style={{ background: rOpen ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, marginBottom: 5, overflow: "hidden", transition: "all 0.2s" }}>
+                        <button onClick={() => toggleRule(rKey)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
+                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: art.color, fontWeight: 700, flexShrink: 0, minWidth: 60 }}>{rule.code}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: rOpen ? "#fff" : "rgba(255,255,255,0.65)", flex: 1 }}>{rule.title}</span>
+                          <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 14, transform: rOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s", lineHeight: 1, flexShrink: 0 }}>›</span>
+                        </button>
+                        {rOpen && (
+                          <div style={{ padding: "0 12px 12px", fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.75, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10 }}>
+                            {rule.text}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Common violations */}
+                  {art.violations?.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 10, color: "rgba(232,120,120,0.6)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 700 }}>⚠ Common Violations</div>
+                      {art.violations.map((v, vi) => (
+                        <div key={vi} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 6 }}>
+                          <span style={{ color: "rgba(232,120,120,0.5)", fontSize: 11, flexShrink: 0, marginTop: 1 }}>·</span>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function Wireway() {
+  const [entries,      setEntries]      = useState({});
+  const [hourlyRate,   setHourlyRate]   = useState(85);
+  const [markup,       setMarkup]       = useState(0.30);
+  const [clientName,   setClientName]   = useState("");
+  const [jobName,      setJobName]      = useState("");
+  const [notes,        setNotes]        = useState("");
+  const [copied,       setCopied]       = useState(false);
+  const [tab,          setTab]          = useState("services");
+  const [showMaterials,setShowMaterials]= useState(true);
+  const [clientBuysAll,setClientBuysAll]= useState(false); // global default
+
+  const upd = (id, data) => setEntries(p => ({ ...p, [id]: data }));
+
+  // ── Compute totals ──
+  const { activeItems, totMat, totLab, totHrs, totClientBuysMat } = useMemo(() => {
+    const items = ALL_SERVICES.filter(s => entries[s.id]?.qty > 0).map(s => {
+      const e = entries[s.id];
+      const v = s.variants[e.variantIdx ?? 0];
+      const qty = e.qty;
+      const cBuys = e.clientBuys ?? clientBuysAll;
+      const mat  = s.materialCost * v.m * qty;
+      const lab  = s.laborCost    * v.m * qty;
+      const hrs  = s.laborHours   * v.m * qty;
+      return { ...s, qty, variantLabel: v.label, mat, lab, hrs, cBuys, lineTotal: cBuys ? lab : mat + lab };
+    });
+    return {
+      activeItems: items,
+      totMat:            items.reduce((a,i) => a + (i.cBuys ? 0 : i.mat), 0),
+      totLab:            items.reduce((a,i) => a + i.lab, 0),
+      totHrs:            items.reduce((a,i) => a + i.hrs, 0),
+      totClientBuysMat:  items.reduce((a,i) => a + (i.cBuys ? i.mat : 0), 0),
+    };
+  }, [entries, clientBuysAll]);
+
+  const subtotal    = totMat + totLab;
+  const markupAmt   = subtotal * markup;
+  const total       = subtotal + markupAmt;
+  const hasItems    = activeItems.length > 0;
+
+  const copyQuote = () => {
+    const cBuyItems  = activeItems.filter(i => i.cBuys);
+    const iSupply    = activeItems.filter(i => !i.cBuys);
+    const lines = [
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      "         WIREWAY ESTIMATE",
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      clientName && `Client:   ${clientName}`,
+      jobName    && `Job:      ${jobName}`,
+      `Date:     ${new Date().toLocaleDateString()}`,
+      "",
+      "SERVICES PROVIDED",
+      "──────────────────────────────────",
+      ...activeItems.map(i => `  • ${i.label} (${i.variantLabel}) × ${i.qty}`),
+      "",
+      ...(iSupply.length ? [
+        "ELECTRICIAN SUPPLIES PARTS",
+        "──────────────────────────────────",
+        ...iSupply.map(i => `  ${i.label} (${i.variantLabel}) × ${i.qty}`),
+        `  Materials subtotal: $${totMat.toLocaleString()}`,
+        "",
+      ] : []),
+      ...(cBuyItems.length ? [
+        "CLIENT SUPPLIES PARTS (labor only)",
+        "──────────────────────────────────",
+        ...cBuyItems.map(i => `  ${i.label} (${i.variantLabel}) × ${i.qty}`),
+        `  Client material est: $${totClientBuysMat.toLocaleString()} (not charged)`,
+        "",
+      ] : []),
+      "COST BREAKDOWN",
+      "──────────────────────────────────",
+      showMaterials && `  Materials (supplied by us): $${totMat.toLocaleString()}`,
+      `  Labor (${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr): $${totLab.toLocaleString()}`,
+      `  Markup (${(markup*100).toFixed(0)}%): $${markupAmt.toLocaleString()}`,
+      "──────────────────────────────────",
+      `  TOTAL: $${total.toLocaleString()}`,
+      notes && `\nNotes:\n${notes}`,
+      "",
+      "Generated by Wireway · NEC 2023 · Professional Electrical Estimating",
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines);
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
+  };
+
+  const TAB = (id, lbl) => (
+    <button onClick={() => setTab(id)} style={{ flex:1, padding:"10px 6px", border:"none", cursor:"pointer", fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, letterSpacing:"-0.01em", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.1)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.3)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent" }}>{lbl}</button>
+  );
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:#0a0a0c}
+        ::-webkit-scrollbar{width:3px}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+        input,textarea,select{outline:none}
+        input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.18)}
+        select option{background:#1a1a1e}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+      `}</style>
+
+      <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
+
+        {/* ── HEADER ── */}
+        <div style={{ borderBottom:"1px solid rgba(255,255,255,0.055)", background:"rgba(10,10,12,0.88)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }}>
+          <div style={{ maxWidth:800, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ width:26, height:26, borderRadius:6, background:"linear-gradient(135deg,#e8c97a 0%,#c9a84c 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#0a0a0c" }}>W</div>
+              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>Wireway</span>
+              <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
+            </div>
+            {hasItems && (
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace" }}>{activeItems.length} services · {totHrs.toFixed(1)} hrs</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.02em" }}>${total.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ maxWidth:800, margin:"0 auto", padding:"0 20px" }}>
+
+          {/* ── HERO ── */}
+          <div style={{ padding:"26px 0 20px", animation:"fadeUp 0.4s ease both" }}>
+            <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:"clamp(20px,5vw,30px)", fontWeight:800, letterSpacing:"-0.04em", lineHeight:1.15, background:"linear-gradient(135deg,#ffffff 40%,rgba(232,201,122,0.85) 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:6 }}>
+              Build your estimate.<br />Win the job.
+            </h1>
+            <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", lineHeight:1.6 }}>
+              {CATEGORIES.flatMap(c => c.services).length} services · {CATEGORIES.length} categories · NEC 2023 code references · Material vs labor split · Client-supplied parts
+            </p>
+          </div>
+
+          {/* ── JOB DETAILS ── */}
+          <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"14px 16px", marginBottom:12, animation:"fadeUp 0.4s ease 0.04s both" }}>
+            <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Job Details</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {[{ ph:"Client name", val:clientName, set:setClientName },{ ph:"Job / address", val:jobName, set:setJobName }].map(f => (
+                <input key={f.ph} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)}
+                  style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:7, padding:"8px 11px", fontSize:13, color:"#fff", fontFamily:"inherit", width:"100%", transition:"border-color 0.15s" }}
+                  onFocus={e => e.target.style.borderColor="rgba(232,201,122,0.35)"}
+                  onBlur={e => e.target.style.borderColor="rgba(255,255,255,0.07)"} />
+              ))}
+            </div>
+          </div>
+
+          {/* ── RATE SETTINGS ── */}
+          <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"14px 16px", marginBottom:12, animation:"fadeUp 0.4s ease 0.08s both" }}>
+            <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Rate Settings</div>
+            <div style={{ display:"flex", gap:18, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:220 }}>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginBottom:8 }}>Hourly Rate — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>${hourlyRate}/hr</span></div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                  {HOURLY_RATES.map(r => <Pill key={r} label={`$${r}`} active={r===hourlyRate} onClick={() => setHourlyRate(r)} />)}
+                </div>
+              </div>
+              <div style={{ flex:1, minWidth:170 }}>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginBottom:8 }}>Markup — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>{(markup*100).toFixed(0)}%</span></div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                  {MARKUP_OPTIONS.map(m => <Pill key={m.v} label={m.label} active={m.v===markup} onClick={() => setMarkup(m.v)} />)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── GLOBAL SETTINGS BAR ── */}
+          <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap", animation:"fadeUp 0.4s ease 0.12s both" }}>
+            {/* Show/hide materials */}
+            <button onClick={() => setShowMaterials(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:8, border: showMaterials ? "1px solid rgba(232,201,122,0.35)" : "1px solid rgba(255,255,255,0.08)", background: showMaterials ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: showMaterials ? "#e8c97a" : "rgba(255,255,255,0.38)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              <span style={{ fontSize:13 }}>{showMaterials ? "◈" : "◇"}</span> {showMaterials ? "Showing material cost" : "Labor only (hide materials)"}
+            </button>
+            {/* Global client buys parts */}
+            <button onClick={() => setClientBuysAll(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:8, border: clientBuysAll ? "1px solid rgba(120,200,255,0.35)" : "1px solid rgba(255,255,255,0.08)", background: clientBuysAll ? "rgba(120,200,255,0.08)" : "rgba(255,255,255,0.03)", color: clientBuysAll ? "#7ec8e8" : "rgba(255,255,255,0.38)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              <span style={{ fontSize:13 }}>{clientBuysAll ? "◉" : "○"}</span> {clientBuysAll ? "Client buys all parts (default)" : "You supply all parts (default)"}
+            </button>
+          </div>
+
+          {/* ── TABS ── */}
+          <div style={{ display:"flex", background:"rgba(255,255,255,0.025)", borderRadius:9, border:"1px solid rgba(255,255,255,0.065)", overflow:"hidden", marginBottom:14, animation:"fadeUp 0.4s ease 0.16s both" }}>
+            {TAB("services", `Services (${CATEGORIES.flatMap(c=>c.services).length})`)}
+            {TAB("summary",  hasItems ? `Summary · $${total.toLocaleString()}` : "Summary")}
+            {TAB("nec", "NEC 2023")}
+          </div>
+
+          {/* ════════════ SERVICES TAB ════════════ */}
+          {tab==="services" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }}>
+              {CATEGORIES.map(cat => (
+                <CategorySection key={cat.id} category={cat} entries={entries} onUpdate={upd}
+                  hourlyRate={hourlyRate} clientBuys={clientBuysAll} showMaterials={showMaterials} />
+              ))}
+            </div>
+          )}
+
+          {/* ════════════ SUMMARY TAB ════════════ */}
+          {tab==="summary" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }}>
+              {!hasItems ? (
+                <div style={{ textAlign:"center", padding:"48px 20px", color:"rgba(255,255,255,0.2)" }}>
+                  <div style={{ fontSize:30, marginBottom:10 }}>◎</div>
+                  <div style={{ fontSize:13 }}>No services selected yet.</div>
+                  <button onClick={() => setTab("services")} style={{ marginTop:18, padding:"9px 22px", background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.28)", borderRadius:8, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Open Services</button>
+                </div>
+              ) : (
+                <>
+                  {/* ── STAT CARDS ── */}
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }}>
+                    <StatCard label="Total Estimate"    value={`$${total.toLocaleString()}`}    color="#e8c97a" />
+                    <StatCard label="Labor Only"        value={`$${totLab.toLocaleString()}`}   color="#a8e87e" sub={`${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr`} />
+                    {showMaterials && <StatCard label="Materials (You)" value={`$${totMat.toLocaleString()}`}   color="#7eb8e8" />}
+                    {totClientBuysMat > 0 && <StatCard label="Client Buys (est.)" value={`$${totClientBuysMat.toLocaleString()}`} color="#e87eb8" sub="not charged to you" />}
+                  </div>
+
+                  {/* ── SERVICES PROVIDED LIST ── */}
+                  <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"14px 16px", marginBottom:12 }}>
+                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Services Provided</div>
+                    {CATEGORIES.map(cat => {
+                      const items = activeItems.filter(i => cat.services.find(s => s.id===i.id));
+                      if (!items.length) return null;
+                      return (
+                        <div key={cat.id} style={{ marginBottom:14 }}>
+                          <div style={{ fontSize:9, color:cat.color, textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:700, marginBottom:6, opacity:0.85 }}>{cat.label}</div>
+                          {items.map(item => (
+                            <div key={item.id} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"7px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:12, color:"rgba(255,255,255,0.78)", fontWeight:600 }}>{item.label}</div>
+                                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace", marginTop:2 }}>
+                                  {item.variantLabel} · {item.nec} · qty {item.qty}
+                                  {item.cBuys
+                                    ? <span style={{ color:"#7ec8e8", marginLeft:6 }}>· client supplies parts</span>
+                                    : <span style={{ color:"rgba(255,255,255,0.25)", marginLeft:6 }}>· you supply parts</span>}
+                                </div>
+                              </div>
+                              {/* Labor / mat / total columns */}
+                              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:2, flexShrink:0 }}>
+                                <span style={{ fontSize:10, color:"rgba(162,220,160,0.8)", fontFamily:"'DM Mono',monospace" }}>lab ${item.lab.toLocaleString()}</span>
+                                {showMaterials && !item.cBuys && <span style={{ fontSize:10, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace" }}>mat ${item.mat.toLocaleString()}</span>}
+                                {item.cBuys && showMaterials && <span style={{ fontSize:10, color:"rgba(126,200,232,0.5)", fontFamily:"'DM Mono',monospace" }}>mat ${item.mat.toLocaleString()} (client)</span>}
+                                <span style={{ fontSize:12, fontWeight:700, color:cat.color, fontFamily:"'DM Mono',monospace" }}>${item.lineTotal.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── TOTALS BOX ── */}
+                  <div style={{ background:"linear-gradient(135deg,rgba(232,201,122,0.065) 0%,rgba(255,255,255,0.018) 100%)", border:"1px solid rgba(232,201,122,0.18)", borderRadius:13, padding:"16px 18px", marginBottom:12 }}>
+                    <div style={{ fontSize:9, color:"rgba(232,201,122,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Cost Breakdown</div>
+                    {[
+                      showMaterials && { label:"Materials (supplied by you)", val:totMat, color:"#7eb8e8" },
+                      { label:`Labor — ${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr`, val:totLab, color:"#a8e87e" },
+                      { label:`Markup — ${(markup*100).toFixed(0)}%`, val:markupAmt, color:"rgba(255,255,255,0.45)" },
+                    ].filter(Boolean).map(row => (
+                      <div key={row.label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", fontSize:12 }}>
+                        <span style={{ color:"rgba(255,255,255,0.38)" }}>{row.label}</span>
+                        <span style={{ fontFamily:"'DM Mono',monospace", color:row.color, fontWeight:600 }}>${row.val.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    {totClientBuysMat > 0 && (
+                      <div style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", fontSize:12 }}>
+                        <span style={{ color:"rgba(126,200,232,0.5)" }}>Client supplies parts (not charged)</span>
+                        <span style={{ fontFamily:"'DM Mono',monospace", color:"rgba(126,200,232,0.5)" }}>~${totClientBuysMat.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingTop:13, marginTop:7, borderTop:"1px solid rgba(232,201,122,0.16)" }}>
+                      <span style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#fff" }}>Total Estimate</span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.03em" }}>${total.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* ── NOTES ── */}
+                  <textarea placeholder="Job notes, permit info, scope exclusions, payment terms, warranty..." value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                    style={{ width:"100%", background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:10, padding:"11px 13px", fontSize:13, color:"#fff", fontFamily:"inherit", resize:"vertical", lineHeight:1.6, transition:"border-color 0.15s", marginBottom:10 }}
+                    onFocus={e => e.target.style.borderColor="rgba(232,201,122,0.28)"}
+                    onBlur={e => e.target.style.borderColor="rgba(255,255,255,0.065)"} />
+
+                  {/* ── COPY BUTTON ── */}
+                  <button onClick={copyQuote} style={{ width:"100%", padding:"13px", background: copied ? "rgba(100,200,130,0.1)" : "linear-gradient(135deg,rgba(232,201,122,0.16) 0%,rgba(232,201,122,0.07) 100%)", border: copied ? "1px solid rgba(100,200,130,0.38)" : "1px solid rgba(232,201,122,0.32)", borderRadius:11, color: copied ? "#7dcea0" : "#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", letterSpacing:"0.01em", transition:"all 0.2s" }}>
+                    {copied ? "✓  Quote Copied to Clipboard" : "Copy Full Quote"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ════════════ NEC REFERENCE TAB ════════════ */}
+          {tab === "nec" && <NECReference />}
+
+          <div style={{ textAlign:"center", marginTop:44, paddingTop:18, borderTop:"1px solid rgba(255,255,255,0.04)", fontSize:9, color:"rgba(255,255,255,0.13)", letterSpacing:"0.07em" }}>
+            WIREWAY · NEC 2023 RESIDENTIAL ESTIMATING · PROFESSIONAL GRADE
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

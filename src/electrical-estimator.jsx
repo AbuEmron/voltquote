@@ -1067,27 +1067,207 @@ function WirecayMark({ size = 32 }) {
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function Wireway() {
-  const [entries,      setEntries]      = useState({});
-  const [hourlyRate,   setHourlyRate]   = useState(85);
-  const [markup,       setMarkup]       = useState(0.30);
-  const [clientName,   setClientName]   = useState("");
-  const [clientEmail,  setClientEmail]  = useState("");
-  const [clientPhone,  setClientPhone]  = useState("");
-  const [jobName,      setJobName]      = useState("");
-  const [notes,        setNotes]        = useState("");
-  const [tab,          setTab]          = useState("services");
-  const [showMaterials,setShowMaterials]= useState(true);
-  const [clientBuysAll,setClientBuysAll]= useState(false);
-  const [copied,       setCopied]       = useState(false);
-  const [quoteNumber,  setQuoteNumber]  = useState("");
-  const [signModal,    setSignModal]    = useState(false);
-  const [sigName,      setSigName]      = useState("");
-  const [sigDate,      setSigDate]      = useState("");
-  const [sigSaved,     setSigSaved]     = useState(false);
-  const [savedQuotes,  setSavedQuotes]  = useState(() => {
+  const [entries,        setEntries]        = useState({});
+  const [hourlyRate,     setHourlyRate]     = useState(85);
+  const [markup,         setMarkup]         = useState(0.30);
+  const [clientName,     setClientName]     = useState("");
+  const [clientEmail,    setClientEmail]    = useState("");
+  const [clientPhone,    setClientPhone]    = useState("");
+  const [jobName,        setJobName]        = useState("");
+  const [notes,          setNotes]          = useState("");
+  const [tab,            setTab]            = useState("services");
+  const [showMaterials,  setShowMaterials]  = useState(true);
+  const [clientBuysAll,  setClientBuysAll]  = useState(false);
+  const [copied,         setCopied]         = useState(false);
+  const [quoteNumber,    setQuoteNumber]    = useState("");
+  const [signModal,      setSignModal]      = useState(false);
+  const [sigName,        setSigName]        = useState("");
+  const [sigDate,        setSigDate]        = useState("");
+  const [sigSaved,       setSigSaved]       = useState(false);
+  const [savedQuotes,    setSavedQuotes]    = useState(() => {
     try { return JSON.parse(localStorage.getItem("wireway_quotes") || "[]"); } catch { return []; }
   });
-  const [saveMsg,      setSaveMsg]      = useState("");
+  const [saveMsg,        setSaveMsg]        = useState("");
+
+  // ── NEW: Custom line items ──
+  const [customItems,    setCustomItems]    = useState([]);
+  const addCustomItem = () => setCustomItems(p => [...p, { id: Date.now(), label: "", qty: 1, materialCost: 0, laborCost: 0, laborHours: 0 }]);
+  const updateCustomItem = (id, data) => setCustomItems(p => p.map(i => i.id === id ? { ...i, ...data } : i));
+  const removeCustomItem = (id) => setCustomItems(p => p.filter(i => i.id !== id));
+
+  // ── NEW: Tax on materials ──
+  const [taxEnabled,     setTaxEnabled]     = useState(false);
+  const [taxRate,        setTaxRate]        = useState(0.08);
+
+  // ── NEW: Invoice mode ──
+  const [invoiceMode,    setInvoiceMode]    = useState(false);
+  const [invoiceDueDate, setInvoiceDueDate] = useState("");
+  const [invoicePaid,    setInvoicePaid]    = useState(false);
+
+  // ── NEW: Flat rate mode (hides math, shows one price) ──
+  const [flatRateMode,   setFlatRateMode]   = useState(false);
+
+  // ── NEW: Client database ──
+  const [clients,        setClients]        = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wireway_clients") || "[]"); } catch { return []; }
+  });
+  const [showClientDB,   setShowClientDB]   = useState(false);
+  const [clientSearch,   setClientSearch]   = useState("");
+
+  const saveClient = () => {
+    if (!clientName) return;
+    const newClient = { id: Date.now(), name: clientName, email: clientEmail, phone: clientPhone, savedAt: new Date().toISOString(), jobCount: 1 };
+    const existing = clients.findIndex(c => c.name.toLowerCase() === clientName.toLowerCase());
+    const updated = existing >= 0
+      ? clients.map((c,i) => i === existing ? { ...c, email: clientEmail, phone: clientPhone, jobCount: (c.jobCount||1)+1 } : c)
+      : [newClient, ...clients];
+    setClients(updated);
+    try { localStorage.setItem("wireway_clients", JSON.stringify(updated)); } catch {}
+  };
+
+  const loadClient = (c) => {
+    setClientName(c.name); setClientEmail(c.email||""); setClientPhone(c.phone||"");
+    setShowClientDB(false);
+  };
+
+  // ── NEW: Wire size calculator state ──
+  const [wireCalcOpen,   setWireCalcOpen]   = useState(false);
+  const [wireAmps,       setWireAmps]       = useState("");
+  const [wireLen,        setWireLen]        = useState("");
+  const [wireVolt,       setWireVolt]       = useState("120");
+  const [wireMat,        setWireMat]        = useState("copper");
+
+  const wireResult = useMemo(() => {
+    const a = parseFloat(wireAmps);
+    if (!a || a <= 0) return null;
+    // NEC Table 310.15(B)(16) — 60°C column (NM-B limitation), copper
+    const cuTable = [{a:15,awg:"14"},{a:20,awg:"12"},{a:30,awg:"10"},{a:40,awg:"8"},{a:55,awg:"6"},{a:70,awg:"4"},{a:85,awg:"3"},{a:95,awg:"2"},{a:110,awg:"1"},{a:130,awg:"1/0"},{a:150,awg:"2/0"},{a:175,awg:"3/0"},{a:200,awg:"4/0"}];
+    const alTable = [{a:15,awg:"12"},{a:20,awg:"10"},{a:30,awg:"8"},{a:40,awg:"6"},{a:55,awg:"4"},{a:65,awg:"3"},{a:75,awg:"2"},{a:85,awg:"1"},{a:100,awg:"1/0"},{a:120,awg:"2/0"},{a:135,awg:"3/0"},{a:155,awg:"4/0"}];
+    const table = wireMat === "copper" ? cuTable : alTable;
+    const needed = a * 1.25; // NEC 215.2 — 125% for continuous loads
+    const row = table.find(r => r.a >= needed) || table[table.length - 1];
+    // Voltage drop check
+    const len = parseFloat(wireLen) || 0;
+    const awgNum = parseInt(row.awg) || 0;
+    const cmilMap = {"14":4110,"12":6530,"10":10380,"8":16510,"6":26240,"4":41740,"3":52620,"2":66360,"1":83690,"1/0":105600,"2/0":133100,"3/0":167800,"4/0":211600};
+    const cmil = cmilMap[row.awg] || 10380;
+    const resistivity = wireMat === "copper" ? 10.4 : 17;
+    const vDrop = len > 0 ? (2 * resistivity * len * a) / cmil : 0;
+    const vDropPct = len > 0 ? (vDrop / parseFloat(wireVolt)) * 100 : 0;
+    return {
+      awg: row.awg,
+      ampacity: row.a,
+      continuous: needed.toFixed(1),
+      vDrop: vDrop.toFixed(2),
+      vDropPct: vDropPct.toFixed(1),
+      vDropOk: vDropPct < 3,
+      nec: "NEC 310.15(B)(16)",
+    };
+  }, [wireAmps, wireLen, wireVolt, wireMat]);
+
+  // ── NEW: Load calculator (NEC 220.82 optional method) ──
+  const [loadCalcOpen,   setLoadCalcOpen]   = useState(false);
+  const [sqft,           setSqft]           = useState("");
+  const [smallAppl,      setSmallAppl]      = useState(2);
+  const [laundry,        setLaundry]        = useState(1);
+  const [dryer,          setDryer]          = useState(0);
+  const [range,          setRange]          = useState(0);
+  const [acTons,         setAcTons]         = useState(0);
+  const [heatKw,         setHeatKw]         = useState(0);
+
+  const loadResult = useMemo(() => {
+    const sf = parseFloat(sqft) || 0;
+    if (!sf) return null;
+    // NEC 220.12 — 3 VA/sqft general lighting
+    const lighting = sf * 3;
+    // NEC 220.52 — small appliance + laundry
+    const sabc = (smallAppl * 1500) + (laundry * 1500);
+    // General loads subtotal
+    const genLoad = lighting + sabc;
+    // NEC 220.82(B) demand: 100% first 10kVA, 40% remainder
+    const gen = genLoad <= 10000 ? genLoad : 10000 + (genLoad - 10000) * 0.4;
+    // Appliances at 100%
+    const dryerVA  = dryer  * 5000;
+    const rangeVA  = range  * 8000;
+    const acVA     = acTons * 3516; // 1 ton = 3516 W
+    const heatVA   = heatKw * 1000;
+    // Use larger of AC or heat (NEC 220.82(C))
+    const hvac = Math.max(acVA, heatVA);
+    const totalVA = gen + dryerVA + rangeVA + hvac;
+    const amps120 = totalVA / 120;
+    const amps240 = totalVA / 240;
+    const panelSize = amps240 <= 100 ? "100A" : amps240 <= 150 ? "150A" : amps240 <= 200 ? "200A" : "400A";
+    return { lighting, sabc, gen: Math.round(gen), dryerVA, rangeVA, hvac, totalVA: Math.round(totalVA), amps240: Math.round(amps240), panelSize };
+  }, [sqft, smallAppl, laundry, dryer, range, acTons, heatKw]);
+
+  // ── NEW: Inspection checklist ──
+  const [checklistOpen,  setChecklistOpen]  = useState(false);
+  const [checklistType,  setChecklistType]  = useState("service_upgrade");
+  const [checkedItems,   setCheckedItems]   = useState({});
+  const toggleCheck = (id) => setCheckedItems(p => ({ ...p, [id]: !p[id] }));
+
+  const CHECKLISTS = {
+    service_upgrade: {
+      label: "Service Upgrade",
+      items: [
+        { id:"su1",  nec:"NEC 230.67",      text:"Whole-home surge protector installed (required 2023)" },
+        { id:"su2",  nec:"NEC 230.79",      text:"Service disconnect rated correctly (min 100A residential)" },
+        { id:"su3",  nec:"NEC 230.24",      text:"Service entrance clearances met (10 ft min at grade)" },
+        { id:"su4",  nec:"NEC 250.50",      text:"Grounding electrode system complete and bonded" },
+        { id:"su5",  nec:"NEC 250.104",     text:"Water and gas piping bonded" },
+        { id:"su6",  nec:"NEC 250.28",      text:"Main bonding jumper installed at panel" },
+        { id:"su7",  nec:"NEC 408.4",       text:"All circuits labeled on directory" },
+        { id:"su8",  nec:"NEC 110.26",      text:"36 in. working clearance maintained in front of panel" },
+        { id:"su9",  nec:"NEC 230.85",      text:"Exterior emergency disconnect installed (required 2023)" },
+        { id:"su10", nec:"NEC 408.7",       text:"All unused knockouts sealed" },
+      ],
+    },
+    new_circuit: {
+      label: "New Circuit / Rough-In",
+      items: [
+        { id:"nc1",  nec:"NEC 210.12",      text:"AFCI protection on all required circuits" },
+        { id:"nc2",  nec:"NEC 210.8",       text:"GFCI protection in all required locations" },
+        { id:"nc3",  nec:"NEC 300.4",       text:"Nail plates installed within 1.25 in. of framing edge" },
+        { id:"nc4",  nec:"NEC 300.14",      text:"6 in. free conductor at all boxes" },
+        { id:"nc5",  nec:"NEC 314.16",      text:"Box fill calculations verified (no overfill)" },
+        { id:"nc6",  nec:"NEC 334.30",      text:"NM cable secured within 12 in. of all boxes" },
+        { id:"nc7",  nec:"NEC 240.4",       text:"Conductor sized correctly for overcurrent device" },
+        { id:"nc8",  nec:"NEC 110.12",      text:"Workmanlike installation — cables properly routed" },
+        { id:"nc9",  nec:"NEC 406.12",      text:"All receptacles are tamper-resistant (TR rated)" },
+        { id:"nc10", nec:"NEC 210.52",      text:"Outlet spacing verified (no point more than 6 ft from outlet)" },
+      ],
+    },
+    pool: {
+      label: "Pool / Spa",
+      items: [
+        { id:"p1",   nec:"NEC 680.26",      text:"Equipotential bonding complete — all metal within 5 ft bonded" },
+        { id:"p2",   nec:"NEC 680.22",      text:"Receptacles at least 6 ft from pool edge (GFCI protected)" },
+        { id:"p3",   nec:"NEC 680.22",      text:"No luminaires within 12 ft horizontally of pool water" },
+        { id:"p4",   nec:"NEC 680.21(C)",   text:"GFCI protection on all pump motor circuits" },
+        { id:"p5",   nec:"NEC 680.23",      text:"Underwater lighting properly niched and rated" },
+        { id:"p6",   nec:"NEC 680.12",      text:"Equipment disconnect within sight of pool equipment" },
+        { id:"p7",   nec:"NEC 680.6",       text:"All equipment within 5 ft of pool grounded (insulated GEC)" },
+        { id:"p8",   nec:"NEC 680.42",      text:"Spa/hot tub has GFCI protection on all circuits" },
+      ],
+    },
+    final_inspection: {
+      label: "Final Inspection",
+      items: [
+        { id:"fi1",  nec:"NEC 314.25",      text:"All boxes have covers or faceplates" },
+        { id:"fi2",  nec:"NEC 408.4",       text:"Panel directory complete and legible" },
+        { id:"fi3",  nec:"NEC 410.16",      text:"Closet lighting fixtures are LED (no incandescent)" },
+        { id:"fi4",  nec:"NEC 200.11",      text:"All outlets tested — no reversed polarity" },
+        { id:"fi5",  nec:"NEC 210.8",       text:"GFCI outlets tested and functional" },
+        { id:"fi6",  nec:"NEC 210.12",      text:"AFCI breakers tested (test button)" },
+        { id:"fi7",  nec:"NEC 760.41",      text:"Smoke detectors interconnected and functional" },
+        { id:"fi8",  nec:"NEC 110.3(B)",    text:"All equipment installed per listing/labeling" },
+        { id:"fi9",  nec:"NEC 230.67",      text:"Surge protector installed and indicator light green" },
+        { id:"fi10", nec:"NEC 110.26",      text:"Panel working clearance verified and unobstructed" },
+        { id:"fi11", nec:"NEC 406.9",       text:"All outdoor outlets have in-use weatherproof covers" },
+        { id:"fi12", nec:"NEC 250.53",      text:"Ground rods driven full depth (8 ft min)" },
+      ],
+    },
+  };
 
   // ── Generate quote number ──
   const genQuoteNum = () => {
@@ -1107,19 +1287,21 @@ export default function Wireway() {
       savedAt: new Date().toISOString(),
       clientName, clientEmail, clientPhone, jobName, notes,
       hourlyRate, markup, showMaterials, clientBuysAll,
-      entries,
+      entries, customItems,
       total, totMat, totLab, totHrs,
       status: "draft",
     };
     const updated = [quote, ...savedQuotes.filter(q => q.quoteNumber !== qn)];
     setSavedQuotes(updated);
     try { localStorage.setItem("wireway_quotes", JSON.stringify(updated)); } catch {}
+    saveClient();
     setSaveMsg("Saved!"); setTimeout(() => setSaveMsg(""), 2000);
   };
 
   // ── Load a saved quote ──
   const loadQuote = (q) => {
-    setEntries(q.entries);
+    setEntries(q.entries || {});
+    setCustomItems(q.customItems || []);
     setHourlyRate(q.hourlyRate);
     setMarkup(q.markup);
     setClientName(q.clientName || "");
@@ -1182,7 +1364,7 @@ export default function Wireway() {
 
   const upd = (id, data) => setEntries(p => ({ ...p, [id]: data }));
 
-  // ── Totals ──
+  // ── Totals (includes custom items) ──
   const { activeItems, totMat, totLab, totHrs, totClientBuysMat } = useMemo(() => {
     const items = ALL_SERVICES.filter(s => entries[s.id]?.qty > 0).map(s => {
       const e = entries[s.id];
@@ -1194,66 +1376,157 @@ export default function Wireway() {
       const hrs  = s.laborHours   * v.m * qty;
       return { ...s, qty, variantLabel: v.label, mat, lab, hrs, cBuys, lineTotal: cBuys ? lab : mat + lab };
     });
+    // Add custom items
+    const custActive = customItems.filter(i => i.label && i.qty > 0).map(i => ({
+      ...i, variantLabel: "Custom", nec: "—", catColor: "#aaa", catLabel: "Custom",
+      mat: i.materialCost * i.qty, lab: i.laborCost * i.qty, hrs: i.laborHours * i.qty,
+      cBuys: false, lineTotal: (i.materialCost + i.laborCost) * i.qty,
+    }));
+    const all = [...items, ...custActive];
     return {
-      activeItems: items,
-      totMat:           items.reduce((a,i) => a + (i.cBuys ? 0 : i.mat), 0),
-      totLab:           items.reduce((a,i) => a + i.lab, 0),
-      totHrs:           items.reduce((a,i) => a + i.hrs, 0),
-      totClientBuysMat: items.reduce((a,i) => a + (i.cBuys ? i.mat : 0), 0),
+      activeItems: all,
+      totMat:           all.reduce((a,i) => a + (i.cBuys ? 0 : i.mat), 0),
+      totLab:           all.reduce((a,i) => a + i.lab, 0),
+      totHrs:           all.reduce((a,i) => a + i.hrs, 0),
+      totClientBuysMat: all.reduce((a,i) => a + (i.cBuys ? i.mat : 0), 0),
     };
-  }, [entries, clientBuysAll]);
+  }, [entries, clientBuysAll, customItems]);
 
-  const subtotal = totMat + totLab;
-  const markupAmt = subtotal * markup;
-  const total = subtotal + markupAmt;
-  const hasItems = activeItems.length > 0;
+  const subtotal   = totMat + totLab;
+  const markupAmt  = subtotal * markup;
+  const taxAmt     = taxEnabled ? totMat * taxRate : 0;
+  const total      = subtotal + markupAmt + taxAmt;
+  const hasItems   = activeItems.length > 0;
+
+  // Profit analysis
+  const grossProfit   = markupAmt + taxAmt;
+  const marginPct     = total > 0 ? (grossProfit / total * 100).toFixed(1) : "0";
+  const laborPct      = total > 0 ? (totLab / total * 100).toFixed(1) : "0";
+  const effectiveRate = totHrs > 0 ? (total / totHrs).toFixed(0) : "0";
+
+  // ── Stripe payment state ──
+  const [depositOnly,      setDepositOnly]      = useState(true);
+  const [depositPercent,   setDepositPercent]   = useState(50);
+  const [paymentLoading,   setPaymentLoading]   = useState(false);
+  const [paymentError,     setPaymentError]     = useState("");
+  const [paymentSuccess,   setPaymentSuccess]   = useState(false);
+
+  // Detect ?payment=success in URL on load (Stripe redirects here after payment)
+  useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      const paidQuote = params.get("quote");
+      if (paidQuote) {
+        // Mark that quote as paid in localStorage
+        setSavedQuotes(prev => {
+          const updated = prev.map(q =>
+            q.quoteNumber === paidQuote ? { ...q, status: "paid", paidAt: new Date().toISOString() } : q
+          );
+          try { localStorage.setItem("wireway_quotes", JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        setPaymentSuccess(true);
+        setTab("saved");
+      }
+      // Clean the URL
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
+  // ── Request payment via Stripe Checkout ──
+  const requestPayment = async () => {
+    if (!hasItems || paymentLoading) return;
+    if (!company.stripeKey) {
+      setPaymentError("Add your Stripe Publishable Key in ⚙ Company Settings first.");
+      return;
+    }
+    setPaymentLoading(true);
+    setPaymentError("");
+    try {
+      const qn = quoteNumber || genQuoteNum();
+      if (!quoteNumber) { setQuoteNumber(qn); saveQuote(); }
+
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteNumber: qn,
+          clientName,
+          clientEmail,
+          jobName,
+          total,
+          depositOnly,
+          depositPercent,
+          companyName: company.name,
+          lineItems: activeItems.slice(0, 5).map(i => ({ label: i.label, amount: i.lineTotal })),
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        setPaymentError(data.error || "Could not create checkout session.");
+      }
+    } catch (err) {
+      setPaymentError("Network error — check your connection and try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   // ── Build plain-text quote ──
   const buildQuoteText = () => {
     const cBuyItems = activeItems.filter(i => i.cBuys);
     const iSupply   = activeItems.filter(i => !i.cBuys);
+    const docType   = invoiceMode ? "INVOICE" : "ESTIMATE";
     return [
       "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-      company.name ? `  ${company.name.toUpperCase()}` : "  ELECTRICAL ESTIMATE",
+      company.name ? `  ${company.name.toUpperCase()}` : `  ELECTRICAL ${docType}`,
       company.phone ? `  ${company.phone}` : null,
       company.email ? `  ${company.email}` : null,
       company.address ? `  ${company.address}` : null,
       company.license ? `  License: ${company.license}` : null,
       "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      quoteNumber && `${docType} #: ${quoteNumber}`,
       clientName && `Client:   ${clientName}`,
       clientPhone && `Phone:    ${clientPhone}`,
       clientEmail && `Email:    ${clientEmail}`,
       jobName    && `Job:      ${jobName}`,
       `Date:     ${new Date().toLocaleDateString()}`,
+      invoiceMode && invoiceDueDate ? `Due:      ${invoiceDueDate}` : null,
       "",
       "SERVICES PROVIDED",
       "──────────────────────────────────",
-      ...activeItems.map(i => `  • ${i.label} (${i.variantLabel}) × ${i.qty}`),
+      ...activeItems.map(i => flatRateMode
+        ? `  • ${i.label}${i.variantLabel && i.variantLabel !== "Custom" ? ` (${i.variantLabel})` : ""} × ${i.qty}  — $${i.lineTotal.toLocaleString()}`
+        : `  • ${i.label}${i.variantLabel && i.variantLabel !== "Custom" ? ` (${i.variantLabel})` : ""} × ${i.qty}`
+      ),
       "",
-      ...(iSupply.length ? [
+      ...((!flatRateMode && iSupply.length) ? [
         "PARTS SUPPLIED BY US",
         "──────────────────────────────────",
         ...iSupply.map(i => `  ${i.label} × ${i.qty}  — $${i.mat.toLocaleString()}`),
         `  Materials subtotal: $${totMat.toLocaleString()}`, "",
       ] : []),
-      ...(cBuyItems.length ? [
+      ...((!flatRateMode && cBuyItems.length) ? [
         "CLIENT SUPPLIES PARTS (labor only billed)",
         "──────────────────────────────────",
-        ...cBuyItems.map(i => `  ${i.label} × ${i.qty}  — est. $${i.mat.toLocaleString()} (not charged)`),
-        "",
+        ...cBuyItems.map(i => `  ${i.label} × ${i.qty}  — est. $${i.mat.toLocaleString()} (not charged)`), "",
       ] : []),
       "COST BREAKDOWN",
       "──────────────────────────────────",
-      showMaterials ? `  Materials:  $${totMat.toLocaleString()}` : null,
-      `  Labor:      $${totLab.toLocaleString()}  (${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr)`,
-      `  Markup:     $${markupAmt.toLocaleString()}  (${(markup*100).toFixed(0)}%)`,
+      (!flatRateMode && showMaterials) ? `  Materials:  $${totMat.toLocaleString()}` : null,
+      !flatRateMode ? `  Labor:      $${totLab.toLocaleString()}  (${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr)` : null,
+      !flatRateMode ? `  Markup:     $${markupAmt.toLocaleString()}  (${(markup*100).toFixed(0)}%)` : null,
+      taxEnabled ? `  Tax (${(taxRate*100).toFixed(1)}% on materials): $${taxAmt.toLocaleString()}` : null,
       "──────────────────────────────────",
       `  TOTAL:      $${total.toLocaleString()}`,
+      invoiceMode && invoicePaid ? "\n  ✓ PAID IN FULL" : null,
       notes ? `\nNotes:\n${notes}` : null,
       "",
       company.terms ? `TERMS:\n${company.terms}` : null,
       "",
-      "Generated by Wireway · NEC 2023 Professional Estimating",
+      "Generated by Wireway · NEC 2023 Professional Estimating · wireway.cc",
     ].filter(Boolean).join("\n");
   };
 
@@ -1263,7 +1536,8 @@ export default function Wireway() {
   };
 
   const emailQuote = () => {
-    const subject = encodeURIComponent(`Electrical Estimate${clientName ? " for " + clientName : ""}${jobName ? " — " + jobName : ""}`);
+    const docType = invoiceMode ? "Invoice" : "Estimate";
+    const subject = encodeURIComponent(`Electrical ${docType}${clientName ? " for " + clientName : ""}${jobName ? " — " + jobName : ""}`);
     const body = encodeURIComponent(buildQuoteText());
     const to = clientEmail ? encodeURIComponent(clientEmail) : "";
     window.open(`mailto:${to}?subject=${subject}&body=${body}`);
@@ -1273,14 +1547,30 @@ export default function Wireway() {
     const body = encodeURIComponent(
       `Hi ${clientName || "there"}, here's your electrical estimate from ${company.name || "us"}:\n\n` +
       activeItems.map(i => `• ${i.label} × ${i.qty}`).join("\n") +
-      `\n\nTOTAL: $${total.toLocaleString()}\n\nCall us: ${company.phone || ""}`
+      `\n\nTOTAL: $${total.toLocaleString()}\n\nCall us: ${company.phone || ""}\nwireway.cc`
     );
     const to = clientPhone ? clientPhone.replace(/\D/g, "") : "";
     window.open(`sms:${to}?body=${body}`);
   };
 
+  // Material pull list
+  const buildMaterialList = () => {
+    const lines = [
+      "WIREWAY — MATERIAL PULL LIST",
+      `Job: ${jobName || "—"}  |  Date: ${new Date().toLocaleDateString()}`,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      ...activeItems.filter(i => !i.cBuys && i.mat > 0).map(i =>
+        `□  ${i.label} (${i.variantLabel})  qty: ${i.qty}  est: $${i.mat.toLocaleString()}`
+      ),
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      `TOTAL MATERIAL COST: $${totMat.toLocaleString()}`,
+    ].join("\n");
+    navigator.clipboard.writeText(lines);
+    setSaveMsg("Material list copied!"); setTimeout(() => setSaveMsg(""), 2000);
+  };
+
   const TAB = (id, lbl) => (
-    <button onClick={() => setTab(id)} style={{ flex:1, padding:"10px 6px", border:"none", cursor:"pointer", fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, letterSpacing:"-0.01em", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.1)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.3)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent" }}>{lbl}</button>
+    <button onClick={() => setTab(id)} style={{ flex:1, padding:"9px 4px", border:"none", cursor:"pointer", fontFamily:"'Syne',sans-serif", fontSize:11, fontWeight:700, letterSpacing:"-0.01em", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.1)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.3)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent" }}>{lbl}</button>
   );
 
   const inputStyle = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:7, padding:"8px 11px", fontSize:13, color:"#fff", fontFamily:"inherit", width:"100%", transition:"border-color 0.15s" };
@@ -1376,21 +1666,85 @@ export default function Wireway() {
           </div>
 
           {/* ── GLOBAL SETTINGS BAR ── */}
-          <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap", animation:"fadeUp 0.4s ease 0.12s both" }} className="no-print">
-            <button onClick={() => setShowMaterials(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:8, border: showMaterials ? "1px solid rgba(232,201,122,0.35)" : "1px solid rgba(255,255,255,0.08)", background: showMaterials ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: showMaterials ? "#e8c97a" : "rgba(255,255,255,0.38)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              <span>{showMaterials ? "◈" : "◇"}</span> {showMaterials ? "Showing material cost" : "Labor only (hide materials)"}
+          <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap", animation:"fadeUp 0.4s ease 0.12s both" }} className="no-print">
+            <button onClick={() => setShowMaterials(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: showMaterials ? "1px solid rgba(232,201,122,0.35)" : "1px solid rgba(255,255,255,0.08)", background: showMaterials ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: showMaterials ? "#e8c97a" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              {showMaterials ? "◈" : "◇"} {showMaterials ? "Mat shown" : "Labor only"}
             </button>
-            <button onClick={() => setClientBuysAll(v => !v)} style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 12px", borderRadius:8, border: clientBuysAll ? "1px solid rgba(120,200,255,0.35)" : "1px solid rgba(255,255,255,0.08)", background: clientBuysAll ? "rgba(120,200,255,0.08)" : "rgba(255,255,255,0.03)", color: clientBuysAll ? "#7ec8e8" : "rgba(255,255,255,0.38)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              <span>{clientBuysAll ? "◉" : "○"}</span> {clientBuysAll ? "Client buys all parts" : "You supply all parts"}
+            <button onClick={() => setClientBuysAll(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: clientBuysAll ? "1px solid rgba(120,200,255,0.35)" : "1px solid rgba(255,255,255,0.08)", background: clientBuysAll ? "rgba(120,200,255,0.08)" : "rgba(255,255,255,0.03)", color: clientBuysAll ? "#7ec8e8" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              {clientBuysAll ? "◉" : "○"} {clientBuysAll ? "Client buys parts" : "You supply parts"}
+            </button>
+            <button onClick={() => setFlatRateMode(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: flatRateMode ? "1px solid rgba(168,232,126,0.35)" : "1px solid rgba(255,255,255,0.08)", background: flatRateMode ? "rgba(168,232,126,0.08)" : "rgba(255,255,255,0.03)", color: flatRateMode ? "#a8e87e" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              $ {flatRateMode ? "Flat rate ON" : "Flat rate"}
+            </button>
+            <button onClick={() => setInvoiceMode(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: invoiceMode ? "1px solid rgba(184,126,232,0.35)" : "1px solid rgba(255,255,255,0.08)", background: invoiceMode ? "rgba(184,126,232,0.08)" : "rgba(255,255,255,0.03)", color: invoiceMode ? "#b87ee8" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              ◻ {invoiceMode ? "Invoice" : "Estimate"}
+            </button>
+            <button onClick={() => setTaxEnabled(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: taxEnabled ? "1px solid rgba(232,184,126,0.35)" : "1px solid rgba(255,255,255,0.08)", background: taxEnabled ? "rgba(232,184,126,0.08)" : "rgba(255,255,255,0.03)", color: taxEnabled ? "#e8b87e" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+              % {taxEnabled ? `Tax ${(taxRate*100).toFixed(0)}%` : "Add tax"}
             </button>
           </div>
 
+          {taxEnabled && (
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"7px 12px", background:"rgba(232,184,126,0.06)", border:"1px solid rgba(232,184,126,0.15)", borderRadius:8 }} className="no-print">
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tax rate:</span>
+              {[0.05,0.06,0.07,0.08,0.09,0.10].map(r => (
+                <button key={r} onClick={() => setTaxRate(r)} style={{ padding:"3px 7px", borderRadius:5, fontSize:10, fontWeight:700, border: r===taxRate ? "1px solid rgba(232,184,126,0.5)" : "1px solid rgba(255,255,255,0.08)", background: r===taxRate ? "rgba(232,184,126,0.15)" : "rgba(255,255,255,0.03)", color: r===taxRate ? "#e8b87e" : "rgba(255,255,255,0.38)", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{(r*100).toFixed(0)}%</button>
+              ))}
+            </div>
+          )}
+
+          {invoiceMode && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"7px 12px", background:"rgba(184,126,232,0.06)", border:"1px solid rgba(184,126,232,0.15)", borderRadius:8 }} className="no-print">
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>Due:</span>
+              <input type="date" value={invoiceDueDate} onChange={e => setInvoiceDueDate(e.target.value)} style={{ ...inputStyle, width:"auto", fontSize:12, colorScheme:"dark" }} onFocus={focusGold} onBlur={blurGray} />
+              <button onClick={() => setInvoicePaid(v => !v)} style={{ padding:"4px 10px", borderRadius:6, border: invoicePaid ? "1px solid rgba(100,220,130,0.4)" : "1px solid rgba(255,255,255,0.1)", background: invoicePaid ? "rgba(100,220,130,0.1)" : "rgba(255,255,255,0.03)", color: invoicePaid ? "#7dcea0" : "rgba(255,255,255,0.4)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                {invoicePaid ? "✓ Paid" : "Mark Paid"}
+              </button>
+            </div>
+          )}
+
+          {/* ── PRO TOOLS ── */}
+          <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }} className="no-print">
+            {[
+              { icon:"⊡", label:"Wire Calc", action:() => setWireCalcOpen(true),  color:"#7eb8e8" },
+              { icon:"⊞", label:"Load Calc", action:() => setLoadCalcOpen(true),  color:"#a8e87e" },
+              { icon:"☑", label:"Checklist",  action:() => setChecklistOpen(true), color:"#e87e7e" },
+              { icon:"⊙", label:"Clients",    action:() => setShowClientDB(true),  color:"#e87eb8" },
+              { icon:"⊕", label:"Custom Item",action:addCustomItem,                color:"#e8c97a" },
+              hasItems ? { icon:"◫", label:"Pull List",  action:buildMaterialList,   color:"#e8d47e" } : null,
+            ].filter(Boolean).map(btn => (
+              <button key={btn.label} onClick={btn.action} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border:`1px solid ${btn.color}20`, background:`${btn.color}08`, color:btn.color, fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.background=`${btn.color}18`}
+                onMouseLeave={e => e.currentTarget.style.background=`${btn.color}08`}>
+                {btn.icon} {btn.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom line items */}
+          {customItems.length > 0 && (
+            <div style={{ background:"rgba(232,201,122,0.04)", border:"1px solid rgba(232,201,122,0.12)", borderRadius:12, padding:"14px 16px", marginBottom:14 }} className="no-print">
+              <div style={{ fontSize:10, color:"rgba(232,201,122,0.6)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Custom Line Items</div>
+              {customItems.map(item => (
+                <div key={item.id} style={{ display:"grid", gridTemplateColumns:"1fr 55px 75px 75px 65px 30px", gap:5, marginBottom:7, alignItems:"center" }}>
+                  <input placeholder="Description" value={item.label} onChange={e => updateCustomItem(item.id, { label:e.target.value })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Qty" type="number" min="1" value={item.qty} onChange={e => updateCustomItem(item.id, { qty:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Mat $" type="number" min="0" value={item.materialCost||""} onChange={e => updateCustomItem(item.id, { materialCost:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Lab $" type="number" min="0" value={item.laborCost||""} onChange={e => updateCustomItem(item.id, { laborCost:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Hrs" type="number" min="0" step="0.25" value={item.laborHours||""} onChange={e => updateCustomItem(item.id, { laborHours:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <button onClick={() => removeCustomItem(item.id)} style={{ width:30, height:30, borderRadius:6, border:"1px solid rgba(255,100,100,0.2)", background:"rgba(255,100,100,0.06)", color:"rgba(255,100,100,0.5)", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── TABS ── */}
           <div style={{ display:"flex", background:"rgba(255,255,255,0.025)", borderRadius:9, border:"1px solid rgba(255,255,255,0.065)", overflow:"hidden", marginBottom:14, animation:"fadeUp 0.4s ease 0.16s both" }} className="no-print">
-            {TAB("services", `Services (${CATEGORIES.flatMap(c=>c.services).length})`)}
-            {TAB("summary",  hasItems ? `Summary · $${total.toLocaleString()}` : "Summary")}
-            {TAB("saved",    savedQuotes.length > 0 ? `Saved (${savedQuotes.length})` : "Saved")}
-            {TAB("nec", "NEC 2023")}
+            {TAB("services", "Services")}
+            {TAB("summary",  hasItems ? `Summary $${total.toLocaleString()}` : "Summary")}
+            {TAB("saved",    `Saved (${savedQuotes.length})`)}
+            {TAB("profit",   "Profit")}
+            {TAB("nec",      "NEC 2023")}
           </div>
 
           {/* ════════════ SERVICES TAB ════════════ */}
@@ -1574,6 +1928,76 @@ export default function Wireway() {
                     onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.04)"}>
                     🖨 Print / Save as PDF
                   </button>
+
+                  {/* ── STRIPE PAYMENT PANEL ── */}
+                  <div style={{ marginTop:14, background:"linear-gradient(135deg,rgba(99,102,241,0.08) 0%,rgba(139,92,246,0.05) 100%)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:13, padding:"18px 18px 14px" }} className="no-print">
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                      <div style={{ width:28, height:28, borderRadius:6, background:"rgba(99,102,241,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>⚡</div>
+                      <div>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:"#fff" }}>Request Payment via Stripe</div>
+                        <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Client pays online — card or bank · 2.9% + 30¢ per transaction</div>
+                      </div>
+                    </div>
+
+                    {/* Deposit vs full toggle */}
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      <button onClick={() => setDepositOnly(true)} style={{ flex:1, padding:"8px", borderRadius:8, border: depositOnly ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositOnly ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.03)", color: depositOnly ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                        Deposit Only
+                      </button>
+                      <button onClick={() => setDepositOnly(false)} style={{ flex:1, padding:"8px", borderRadius:8, border: !depositOnly ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: !depositOnly ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.03)", color: !depositOnly ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                        Full Amount
+                      </button>
+                    </div>
+
+                    {/* Deposit percentage selector */}
+                    {depositOnly && (
+                      <div style={{ display:"flex", gap:5, marginBottom:12 }}>
+                        <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)", alignSelf:"center", flexShrink:0 }}>Deposit %:</span>
+                        {[25, 33, 50, 75].map(pct => (
+                          <button key={pct} onClick={() => setDepositPercent(pct)} style={{ flex:1, padding:"6px", borderRadius:6, border: depositPercent===pct ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositPercent===pct ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: depositPercent===pct ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{pct}%</button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Amount preview */}
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", background:"rgba(255,255,255,0.04)", borderRadius:8, marginBottom:12 }}>
+                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>
+                        {depositOnly ? `${depositPercent}% deposit` : "Full payment"} to charge:
+                      </span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:700, color:"#818cf8" }}>
+                        ${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Error message */}
+                    {paymentError && (
+                      <div style={{ fontSize:11, color:"#e87e7e", background:"rgba(232,126,126,0.08)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10, lineHeight:1.5 }}>
+                        ⚠ {paymentError}
+                      </div>
+                    )}
+
+                    {/* Success message */}
+                    {paymentSuccess && (
+                      <div style={{ fontSize:11, color:"#7dcea0", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10 }}>
+                        ✓ Payment received! Quote marked as paid.
+                      </div>
+                    )}
+
+                    {/* Pay button */}
+                    {!company.stripeKey ? (
+                      <button onClick={() => setEditingCompany(true)} style={{ width:"100%", padding:"13px", background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, color:"#818cf8", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        ⚙ Connect Stripe in Company Settings
+                      </button>
+                    ) : (
+                      <button onClick={requestPayment} disabled={paymentLoading} style={{ width:"100%", padding:"13px", background: paymentLoading ? "rgba(99,102,241,0.06)" : "linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15))", border:"1px solid rgba(99,102,241,0.4)", borderRadius:10, color: paymentLoading ? "rgba(129,140,248,0.5)" : "#818cf8", fontSize:13, fontWeight:700, cursor: paymentLoading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+                        {paymentLoading ? "Opening Stripe Checkout..." : `⚡ Send Payment Request — $${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}`}
+                      </button>
+                    )}
+
+                    <div style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:8 }}>
+                      Powered by Stripe · Secure · PCI compliant · Client pays in their browser
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -1637,6 +2061,79 @@ export default function Wireway() {
             </div>
           )}
 
+          {/* ════════════ PROFIT ANALYSIS TAB ════════════ */}
+          {tab==="profit" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }} className="no-print">
+              {!hasItems ? (
+                <div style={{ textAlign:"center", padding:"40px 20px", color:"rgba(255,255,255,0.2)" }}>
+                  <div style={{ fontSize:28, marginBottom:10 }}>◎</div>
+                  <div style={{ fontSize:13 }}>Add services to see profit analysis.</div>
+                </div>
+              ) : (
+                <>
+                  {/* Key metrics */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
+                    {[
+                      { label:"Total Revenue",     val:`$${total.toLocaleString()}`,         color:"#e8c97a", sub:"what client pays" },
+                      { label:"Your Labor",         val:`$${totLab.toLocaleString()}`,         color:"#a8e87e", sub:`${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr` },
+                      { label:"Materials Cost",     val:`$${totMat.toLocaleString()}`,         color:"#7eb8e8", sub:"your out-of-pocket" },
+                      { label:"Gross Profit",       val:`$${markupAmt.toLocaleString()}`,      color:"#e8c97a", sub:`${marginPct}% margin` },
+                      { label:"Effective Rate",     val:`$${effectiveRate}/hr`,                color:"#a8e87e", sub:"revenue per hour" },
+                      { label:"Labor %",            val:`${laborPct}%`,                        color:"#7eb8e8", sub:"of total invoice" },
+                    ].map(c => (
+                      <div key={c.label} style={{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"12px 14px" }}>
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>{c.label}</div>
+                        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color:c.color }}>{c.val}</div>
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.25)", marginTop:2 }}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Profitability grade */}
+                  <div style={{ background: Number(marginPct) >= 30 ? "rgba(100,220,130,0.06)" : Number(marginPct) >= 20 ? "rgba(232,201,122,0.06)" : "rgba(232,120,120,0.06)", border: `1px solid ${Number(marginPct) >= 30 ? "rgba(100,220,130,0.2)" : Number(marginPct) >= 20 ? "rgba(232,201,122,0.2)" : "rgba(232,120,120,0.2)"}`, borderRadius:12, padding:"16px 18px", marginBottom:14 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#fff" }}>
+                          {Number(marginPct) >= 30 ? "✓ Strong margin" : Number(marginPct) >= 20 ? "⚡ Fair margin" : "⚠ Thin margin"}
+                        </div>
+                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:3 }}>
+                          {Number(marginPct) >= 30 ? "Industry benchmark: 25–35% is healthy for residential electrical." : Number(marginPct) >= 20 ? "Consider raising markup or hourly rate to improve margins." : "Increase markup or hourly rate — you may be underpriced."}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:700, color: Number(marginPct) >= 30 ? "#7dcea0" : Number(marginPct) >= 20 ? "#e8c97a" : "#e87e7e" }}>
+                        {marginPct}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Per-service profitability breakdown */}
+                  <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:12, padding:"14px 16px" }}>
+                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Service Breakdown</div>
+                    {activeItems.map(item => {
+                      const itemMarkup = (item.lineTotal * markup);
+                      const itemRevenue = item.lineTotal + itemMarkup;
+                      const itemMargin = itemRevenue > 0 ? ((itemMarkup / itemRevenue) * 100).toFixed(0) : 0;
+                      return (
+                        <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, color:"rgba(255,255,255,0.7)", fontWeight:600, lineHeight:1.2 }}>{item.label}</div>
+                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace", marginTop:1 }}>
+                              {item.hrs.toFixed(1)} hrs · lab ${item.lab.toLocaleString()} · mat ${item.mat.toLocaleString()}
+                            </div>
+                          </div>
+                          <div style={{ textAlign:"right", flexShrink:0 }}>
+                            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:700, color:"#e8c97a" }}>${itemRevenue.toLocaleString()}</div>
+                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace" }}>{itemMargin}% margin</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* ════════════ NEC REFERENCE TAB ════════════ */}
           {tab === "nec" && <NECReference />}
 
@@ -1646,7 +2143,7 @@ export default function Wireway() {
         </div>
       </div>
 
-      {/* ════════════ SIGNATURE MODAL ════════════ */}
+      {/* ════════════ COMPANY PROFILE MODAL ════════════ */}
       {signModal && (
         <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setSignModal(false)}>
           <div className="modal-box" style={{ padding:"28px" }}>
@@ -1714,7 +2211,218 @@ export default function Wireway() {
         </div>
       )}
 
-      {/* ════════════ COMPANY PROFILE MODAL ════════════ */}
+      {/* ════════════ WIRE SIZE CALCULATOR MODAL ════════════ */}
+      {wireCalcOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setWireCalcOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Wire Size Calculator</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>NEC Table 310.15(B)(16) · 60°C column</div>
+              </div>
+              <button onClick={() => setWireCalcOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+              {[
+                { label:"Load (amps)", val:wireAmps, set:setWireAmps, ph:"e.g. 20", type:"number" },
+                { label:"One-way run (ft)", val:wireLen, set:setWireLen, ph:"e.g. 75", type:"number" },
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>{f.label}</div>
+                  <input type={f.type} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
+                </div>
+              ))}
+              <div>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>Voltage</div>
+                <div style={{ display:"flex", gap:5 }}>
+                  {["120","240"].map(v => <button key={v} onClick={() => setWireVolt(v)} style={{ flex:1, padding:"8px", borderRadius:6, border: wireVolt===v ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)", background: wireVolt===v ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: wireVolt===v ? "#e8c97a" : "rgba(255,255,255,0.4)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{v}V</button>)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>Conductor</div>
+                <div style={{ display:"flex", gap:5 }}>
+                  {["copper","aluminum"].map(m => <button key={m} onClick={() => setWireMat(m)} style={{ flex:1, padding:"8px", borderRadius:6, border: wireMat===m ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)", background: wireMat===m ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: wireMat===m ? "#e8c97a" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{m[0].toUpperCase()+m.slice(1)}</button>)}
+                </div>
+              </div>
+            </div>
+            {wireResult && (
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12 }}>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:700, color:"#e8c97a" }}># {wireResult.awg}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>AWG minimum</div>
+                  </div>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:600, color:"#a8e87e" }}>{wireResult.ampacity}A</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>ampacity</div>
+                  </div>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:600, color: wireResult.vDropOk ? "#a8e87e" : "#e87e7e" }}>
+                      {wireLen ? `${wireResult.vDropPct}%` : "—"}
+                    </div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>voltage drop</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", lineHeight:1.7, borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:10 }}>
+                  <span style={{ color:"rgba(232,201,122,0.7)", fontFamily:"'DM Mono',monospace" }}>{wireResult.nec}</span> — continuous load ({wireResult.continuous}A at 125%) requires #{wireResult.awg} AWG {wireMat}.
+                  {wireLen && !wireResult.vDropOk && <span style={{ color:"#e87e7e" }}> ⚠ Voltage drop exceeds 3% — consider upsizing one AWG.</span>}
+                  {wireLen && wireResult.vDropOk && <span style={{ color:"#a8e87e" }}> ✓ Voltage drop within 3% limit.</span>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ LOAD CALCULATOR MODAL ════════════ */}
+      {loadCalcOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setLoadCalcOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Load Calculator</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>NEC 220.82 Optional Method — dwelling units</div>
+              </div>
+              <button onClick={() => setLoadCalcOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+              {[
+                { label:"Sq footage", val:sqft, set:setSqft, ph:"e.g. 2400" },
+                { label:"Small appl. circuits", val:smallAppl, set:setSmallAppl, ph:"2 (min)" },
+                { label:"Laundry circuits", val:laundry, set:setLaundry, ph:"1 (min)" },
+                { label:"Electric dryers", val:dryer, set:setDryer, ph:"0" },
+                { label:"Electric ranges", val:range, set:setRange, ph:"0" },
+                { label:"AC (tons)", val:acTons, set:setAcTons, ph:"0" },
+                { label:"Heat (kW)", val:heatKw, set:setHeatKw, ph:"0" },
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>{f.label}</div>
+                  <input type="number" min="0" placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
+                </div>
+              ))}
+            </div>
+            {loadResult && (
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12, textAlign:"center" }}>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color:"#e8c97a" }}>{loadResult.amps240}A</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>calculated load @240V</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color:"#a8e87e" }}>{loadResult.panelSize}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>min panel size</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:600, color:"#7eb8e8" }}>{(loadResult.totalVA/1000).toFixed(1)}kVA</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>total demand</div>
+                  </div>
+                </div>
+                {[
+                  { label:"General lighting (3 VA/sqft)", val: loadResult.lighting },
+                  { label:"Small appliance + laundry", val: loadResult.sabc },
+                  { label:"After demand factors", val: loadResult.gen },
+                  { label:"Dryers", val: loadResult.dryerVA },
+                  { label:"Ranges", val: loadResult.rangeVA },
+                  { label:"HVAC (larger of AC/heat)", val: loadResult.hvac },
+                ].filter(r => r.val > 0).map(row => (
+                  <div key={row.label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, padding:"3px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ color:"rgba(255,255,255,0.4)" }}>{row.label}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", color:"rgba(255,255,255,0.6)" }}>{row.val.toLocaleString()} VA</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ INSPECTION CHECKLIST MODAL ════════════ */}
+      {checklistOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setChecklistOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px", maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>NEC 2023 Inspection Checklist</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>Pre-inspection verification</div>
+              </div>
+              <button onClick={() => setChecklistOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+              {Object.entries(CHECKLISTS).map(([key, val]) => (
+                <button key={key} onClick={() => setChecklistType(key)} style={{ padding:"5px 10px", borderRadius:6, fontSize:10, fontWeight:700, border: checklistType===key ? "1px solid rgba(232,120,120,0.5)" : "1px solid rgba(255,255,255,0.08)", background: checklistType===key ? "rgba(232,120,120,0.1)" : "rgba(255,255,255,0.03)", color: checklistType===key ? "#e87e7e" : "rgba(255,255,255,0.4)", cursor:"pointer", fontFamily:"inherit" }}>{val.label}</button>
+              ))}
+            </div>
+            {(() => {
+              const cl = CHECKLISTS[checklistType];
+              const done = cl.items.filter(i => checkedItems[i.id]).length;
+              return (
+                <>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{done} / {cl.items.length} complete</div>
+                    <div style={{ height:4, flex:1, marginLeft:12, background:"rgba(255,255,255,0.06)", borderRadius:2, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(done/cl.items.length)*100}%`, background:"#7dcea0", borderRadius:2, transition:"width 0.3s" }}/>
+                    </div>
+                  </div>
+                  {cl.items.map(item => (
+                    <div key={item.id} onClick={() => toggleCheck(item.id)} style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.04)", cursor:"pointer" }}>
+                      <div style={{ width:20, height:20, borderRadius:4, flexShrink:0, border: checkedItems[item.id] ? "1px solid #7dcea0" : "1px solid rgba(255,255,255,0.2)", background: checkedItems[item.id] ? "rgba(100,220,130,0.15)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", marginTop:1, transition:"all 0.15s" }}>
+                        {checkedItems[item.id] && <span style={{ fontSize:11, color:"#7dcea0" }}>✓</span>}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12, color: checkedItems[item.id] ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.8)", textDecoration: checkedItems[item.id] ? "line-through" : "none", lineHeight:1.4 }}>{item.text}</div>
+                        <div style={{ fontSize:9, color:"rgba(232,201,122,0.5)", fontFamily:"'DM Mono',monospace", marginTop:2 }}>{item.nec}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {done === cl.items.length && done > 0 && (
+                    <div style={{ textAlign:"center", padding:"16px", background:"rgba(100,220,130,0.06)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:10, marginTop:12, color:"#7dcea0", fontSize:13, fontWeight:700 }}>
+                      ✓ All checks complete — ready for inspection
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ CLIENT DATABASE MODAL ════════════ */}
+      {showClientDB && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setShowClientDB(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Client Database</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>{clients.length} saved client{clients.length !== 1 ? "s" : ""}</div>
+              </div>
+              <button onClick={() => setShowClientDB(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <input placeholder="Search clients..." value={clientSearch} onChange={e => setClientSearch(e.target.value)} style={{ ...inputStyle, marginBottom:12 }} onFocus={focusGold} onBlur={blurGray} />
+            {clients.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"30px 20px", color:"rgba(255,255,255,0.2)", fontSize:12 }}>
+                No clients yet. Save a quote to add a client automatically.
+              </div>
+            ) : (
+              clients.filter(c => !clientSearch || c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(c => (
+                <div key={c.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ width:36, height:36, borderRadius:8, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#e8c97a", flexShrink:0 }}>
+                    {c.name[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#fff" }}>{c.name}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", fontFamily:"'DM Mono',monospace" }}>
+                      {[c.phone, c.email].filter(Boolean).join(" · ")} {c.jobCount > 1 ? `· ${c.jobCount} jobs` : ""}
+                    </div>
+                  </div>
+                  <button onClick={() => loadClient(c)} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(232,201,122,0.3)", background:"rgba(232,201,122,0.08)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    Load
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
       {editingCompany && (
         <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setEditingCompany(false)}>
           <div className="modal-box" style={{ padding:"24px" }}>
@@ -1768,6 +2476,25 @@ export default function Wireway() {
               <textarea placeholder="Payment due within 30 days. 50% deposit required before work begins. Estimate valid for 30 days..."
                 value={companyDraft.terms||""} onChange={e => setCompanyDraft(p => ({ ...p, terms: e.target.value }))}
                 rows={3} style={{ ...inputStyle, resize:"vertical", lineHeight:1.6 }} onFocus={focusGold} onBlur={blurGray} />
+            </div>
+
+            {/* Stripe */}
+            <div style={{ marginBottom:16, padding:"14px", background:"rgba(99,102,241,0.06)", border:"1px solid rgba(99,102,241,0.18)", borderRadius:10 }}>
+              <div style={{ fontSize:10, color:"rgba(129,140,248,0.8)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>⚡ Stripe Integration</div>
+              <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginBottom:8, lineHeight:1.6 }}>
+                Add your Stripe Secret Key to enable online payment collection. Get it from <span style={{ color:"#818cf8" }}>dashboard.stripe.com → Developers → API Keys</span>. Use test key (sk_test_...) first, then switch to live (sk_live_...) when ready.
+              </div>
+              <input
+                placeholder="sk_live_... or sk_test_..."
+                value={companyDraft.stripeKey||""}
+                onChange={e => setCompanyDraft(p => ({ ...p, stripeKey: e.target.value }))}
+                type="password"
+                style={{ ...inputStyle, fontFamily:"'DM Mono',monospace", fontSize:11 }}
+                onFocus={focusGold} onBlur={blurGray}
+              />
+              <div style={{ fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:5 }}>
+                Your key is stored locally on this device and never sent to Wireway servers — only to Stripe when a payment is requested.
+              </div>
             </div>
 
             <div style={{ display:"flex", gap:8 }}>

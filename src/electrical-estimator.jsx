@@ -674,28 +674,37 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
     setSaveMsg(error ? "Save failed" : "Saved!"); setTimeout(() => setSaveMsg(""), 2000);
   };
 
-  // ── Load a saved quote ──
-  const loadQuote = (q) => {
-    setEntries(q.entries || q.entries || {});
-    setCustomItems(q.custom_items || q.customItems || []);
-    setHourlyRate(q.hourly_rate || q.hourlyRate || 85);
-    setMarkup(q.markup || 0.30);
-    setClientName(q.client_name || q.clientName || "");
-    setClientEmail(q.client_email || q.clientEmail || "");
-    setClientPhone(q.client_phone || q.clientPhone || "");
-    setJobName(q.job_name || q.jobName || "");
-    setNotes(q.notes || "");
-    setShowMaterials(q.show_materials ?? q.showMaterials ?? true);
-    setClientBuysAll(q.client_buys_all ?? q.clientBuysAll ?? false);
-    setFlatRateMode(q.flat_rate_mode ?? q.flatRateMode ?? false);
-    setInvoiceMode(q.invoice_mode ?? q.invoiceMode ?? false);
-    setInvoiceDueDate(q.invoice_due_date || q.invoiceDueDate || "");
-    setInvoicePaid(q.invoice_paid ?? q.invoicePaid ?? false);
-    setTaxEnabled(q.tax_enabled ?? q.taxEnabled ?? false);
-    setTaxRate(q.tax_rate || q.taxRate || 0.08);
-    setQuoteNumber(q.quote_number || q.quoteNumber || "");
-    setQuoteId(q.id || null);
+  // ── Load a saved quote — fetch full data first ──
+  const loadQuote = async (q) => {
+    // If entries are missing (summary-only row), fetch the full quote
+    let fullQ = q;
+    if (!q.entries && q.id && user?.id) {
+      const { getQuote } = await import("./lib/supabase");
+      const { data } = await getQuote(q.id);
+      if (data) fullQ = data;
+    }
+    setEntries(fullQ.entries || {});
+    setCustomItems(fullQ.custom_items || fullQ.customItems || []);
+    setHourlyRate(fullQ.hourly_rate || fullQ.hourlyRate || 85);
+    setMarkup(Number(fullQ.markup) || 0.30);
+    setClientName(fullQ.client_name || fullQ.clientName || "");
+    setClientEmail(fullQ.client_email || fullQ.clientEmail || "");
+    setClientPhone(fullQ.client_phone || fullQ.clientPhone || "");
+    setJobName(fullQ.job_name || fullQ.jobName || "");
+    setNotes(fullQ.notes || "");
+    setShowMaterials(fullQ.show_materials ?? fullQ.showMaterials ?? true);
+    setClientBuysAll(fullQ.client_buys_all ?? fullQ.clientBuysAll ?? false);
+    setFlatRateMode(fullQ.flat_rate_mode ?? fullQ.flatRateMode ?? false);
+    setInvoiceMode(fullQ.invoice_mode ?? fullQ.invoiceMode ?? false);
+    setInvoiceDueDate(fullQ.invoice_due_date || fullQ.invoiceDueDate || "");
+    setInvoicePaid(fullQ.invoice_paid ?? fullQ.invoicePaid ?? false);
+    setTaxEnabled(fullQ.tax_enabled ?? fullQ.taxEnabled ?? false);
+    setTaxRate(Number(fullQ.tax_rate) || Number(fullQ.taxRate) || 0.08);
+    setQuoteNumber(fullQ.quote_number || fullQ.quoteNumber || "");
+    setQuoteId(fullQ.id || null);
     setTab("summary");
+    setSaveMsg("Quote loaded");
+    setTimeout(() => setSaveMsg(""), 2000);
   };
 
   // ── Delete a saved quote ──
@@ -1597,7 +1606,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                       </div>
                       <div style={{ display:"flex", gap:6, flexShrink:0 }}>
                         <button onClick={() => loadQuote(q)} style={{ padding:"7px 14px", borderRadius:7, border:"1px solid rgba(232,201,122,0.3)", background:"rgba(232,201,122,0.08)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                          Load
+                          Load →
                         </button>
                         <button onClick={() => deleteQuote(q.id)} style={{ padding:"7px 10px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,100,100,0.5)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                           ✕

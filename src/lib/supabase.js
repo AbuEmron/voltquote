@@ -1,40 +1,20 @@
 // src/lib/supabase.js
-// Supabase client — import this everywhere you need DB or auth access
-//
-// Environment variables (set in Vercel dashboard AND .env.local for dev):
-//   REACT_APP_SUPABASE_URL   — from Supabase project Settings → API
-//   REACT_APP_SUPABASE_ANON_KEY — from Supabase project Settings → API
-
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl  = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnon = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnon) {
-  console.error(
-    "Missing Supabase env vars. Add REACT_APP_SUPABASE_URL and " +
-    "REACT_APP_SUPABASE_ANON_KEY to your .env.local and Vercel environment."
-  );
-}
-
 export const supabase = createClient(supabaseUrl, supabaseAnon, {
-  auth: {
-    // Persist session in localStorage so users stay logged in
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
-// ── AUTH HELPERS ──────────────────────────────────────────────
-
+// ── AUTH ────────────────────────────────────────────────────────────────────
 export const signUp = async ({ email, password, fullName }) => {
   const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
+    email, password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${window.location.origin}/`,
     },
   });
   return { data, error };
@@ -50,25 +30,24 @@ export const signOut = async () => {
   return { error };
 };
 
-export const getSession = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
-};
-
-export const getUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-};
-
 export const resetPassword = async (email) => {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset`,
+    redirectTo: `${window.location.origin}/`,
   });
   return { error };
 };
 
-// ── PROFILE HELPERS ───────────────────────────────────────────
+export const updatePassword = async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  return { error };
+};
 
+export const updateEmail = async (newEmail) => {
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  return { error };
+};
+
+// ── PROFILE ─────────────────────────────────────────────────────────────────
 export const getProfile = async (userId) => {
   const { data, error } = await supabase
     .from("profiles")
@@ -88,18 +67,34 @@ export const updateProfile = async (userId, updates) => {
   return { data, error };
 };
 
-// ── QUOTE HELPERS ─────────────────────────────────────────────
+// ── PLAN HELPERS ─────────────────────────────────────────────────────────────
+export const isPro = (profile) => {
+  if (!profile) return false;
+  return (
+    profile.plan === "pro" ||
+    profile.plan === "teams" ||
+    profile.subscription_status === "trialing" ||
+    profile.subscription_status === "active"
+  );
+};
 
-export const getQuotes = async (userId, { status, limit = 50 } = {}) => {
-  let query = supabase
+export const isTrialing = (profile) => profile?.subscription_status === "trialing";
+
+export const trialDaysLeft = (profile) => {
+  if (!profile?.trial_ends_at) return 0;
+  const diff = new Date(profile.trial_ends_at) - new Date();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+};
+
+// ── QUOTES ───────────────────────────────────────────────────────────────────
+export const getQuotes = async (userId) => {
+  const { data, error } = await supabase
     .from("quotes")
     .select("id, quote_number, client_name, job_name, total, status, created_at, paid_at, sig_name")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(limit);
-  if (status) query = query.eq("status", status);
-  const { data, error } = await query;
-  return { data, error };
+    .limit(100);
+  return { data: data || [], error };
 };
 
 export const getQuote = async (id) => {
@@ -111,78 +106,99 @@ export const getQuote = async (id) => {
   return { data, error };
 };
 
-export const saveQuote = async (userId, quoteData) => {
-  const payload = { ...quoteData, user_id: userId };
+export const upsertQuote = async (userId, quoteData) => {
+  const payload = {
+    user_id:        userId,
+    quote_number:   quoteData.quoteNumber,
+    client_name:    quoteData.clientName,
+    client_email:   quoteData.clientEmail,
+    client_phone:   quoteData.clientPhone,
+    job_name:       quoteData.jobName,
+    notes:          quoteData.notes,
+    hourly_rate:    quoteData.hourlyRate,
+    markup:         quoteData.markup,
+    show_materials: quoteData.showMaterials,
+    client_buys_all:quoteData.clientBuysAll,
+    flat_rate_mode: quoteData.flatRateMode,
+    invoice_mode:   quoteData.invoiceMode,
+    invoice_due_date: quoteData.invoiceDueDate || null,
+    invoice_paid:   quoteData.invoicePaid,
+    tax_enabled:    quoteData.taxEnabled,
+    tax_rate:       quoteData.taxRate,
+    entries:        quoteData.entries,
+    custom_items:   quoteData.customItems,
+    total_material: quoteData.totMat,
+    total_labor:    quoteData.totLab,
+    total_hours:    quoteData.totHrs,
+    total_markup:   quoteData.markupAmt,
+    total_tax:      quoteData.taxAmt,
+    total:          quoteData.total,
+    status:         quoteData.status || "draft",
+  };
+
   if (quoteData.id) {
-    // Update existing
     const { data, error } = await supabase
-      .from("quotes")
-      .update(payload)
-      .eq("id", quoteData.id)
-      .eq("user_id", userId)
-      .select()
-      .single();
+      .from("quotes").update(payload).eq("id", quoteData.id).eq("user_id", userId).select().single();
     return { data, error };
   } else {
-    // Insert new
     const { data, error } = await supabase
-      .from("quotes")
-      .insert(payload)
-      .select()
-      .single();
+      .from("quotes").insert(payload).select().single();
     return { data, error };
   }
 };
 
 export const deleteQuote = async (id, userId) => {
-  const { error } = await supabase
-    .from("quotes")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
+  const { error } = await supabase.from("quotes").delete().eq("id", id).eq("user_id", userId);
   return { error };
 };
 
 export const updateQuoteStatus = async (id, status, extra = {}) => {
   const { data, error } = await supabase
-    .from("quotes")
-    .update({ status, ...extra })
-    .eq("id", id)
-    .select()
-    .single();
+    .from("quotes").update({ status, ...extra }).eq("id", id).select().single();
   return { data, error };
 };
 
-// ── CLIENT HELPERS ────────────────────────────────────────────
-
+// ── CLIENTS ──────────────────────────────────────────────────────────────────
 export const getClients = async (userId) => {
   const { data, error } = await supabase
     .from("clients")
     .select("*")
     .eq("user_id", userId)
     .order("name");
-  return { data, error };
+  return { data: data || [], error };
 };
 
 export const upsertClient = async (userId, clientData) => {
-  const payload = { ...clientData, user_id: userId };
-  const { data, error } = await supabase
-    .from("clients")
-    .upsert(payload, { onConflict: "id" })
-    .select()
-    .single();
-  return { data, error };
+  const payload = {
+    user_id: userId,
+    name:    clientData.name,
+    email:   clientData.email || null,
+    phone:   clientData.phone || null,
+  };
+
+  // Check if client exists by name for this user
+  const { data: existing } = await supabase
+    .from("clients").select("id, job_count, total_billed")
+    .eq("user_id", userId).ilike("name", clientData.name).maybeSingle();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("clients").update({ ...payload, job_count: (existing.job_count || 0) + 1 })
+      .eq("id", existing.id).select().single();
+    return { data, error };
+  } else {
+    const { data, error } = await supabase.from("clients").insert({ ...payload, job_count: 1 }).select().single();
+    return { data, error };
+  }
 };
 
-// ── LOGO UPLOAD ───────────────────────────────────────────────
-
+// ── LOGO UPLOAD ───────────────────────────────────────────────────────────────
 export const uploadLogo = async (userId, file) => {
-  const ext = file.name.split(".").pop();
+  const ext  = file.name.split(".").pop();
   const path = `${userId}/logo.${ext}`;
   const { error: uploadError } = await supabase.storage
-    .from("logos")
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .from("logos").upload(path, file, { upsert: true, contentType: file.type });
   if (uploadError) return { url: null, error: uploadError };
   const { data } = supabase.storage.from("logos").getPublicUrl(path);
-  return { url: data.publicUrl, error: null };
+  return { url: data.publicUrl + `?t=${Date.now()}`, error: null };
 };

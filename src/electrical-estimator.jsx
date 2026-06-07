@@ -1049,9 +1049,9 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                   ${total.toLocaleString()}
                 </span>
               )}
-              {onShowPricing && (profile?.plan !== "pro" && profile?.plan !== "teams" || onTrial) && (
+              {onShowPricing && profile?.subscription_status !== "active" && (
                 <button onClick={onShowPricing} style={{ padding:"5px 11px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
-                  ⚡ {onTrial ? `${daysLeft}d left` : "Upgrade"}
+                  ⚡ {onTrial && daysLeft > 0 ? `${daysLeft}d left` : "Upgrade"}
                 </button>
               )}
               <button onClick={newQuote} style={{ padding:"5px 11px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
@@ -1224,7 +1224,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             {TAB("saved",    `Saved (${savedQuotes.length})`)}
             {TAB("profit",   "Profit")}
             {TAB("nec",      "NEC 2023")}
-            {(onTrial || profile?.plan !== "pro" && profile?.plan !== "teams") && onShowPricing && (
+            {onShowPricing && profile?.subscription_status !== "active" && (
               <button onClick={onShowPricing} style={{ padding:"9px 10px", border:"none", background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", color:"#e8c97a", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"'Syne',sans-serif", borderLeft:"1px solid rgba(232,201,122,0.2)", letterSpacing:"-0.01em", whiteSpace:"nowrap" }}>
                 ⚡ {onTrial ? `${daysLeft}d left` : "Upgrade"}
               </button>

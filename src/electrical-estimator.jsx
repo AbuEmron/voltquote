@@ -1066,7 +1066,7 @@ function WirecayMark({ size = 32 }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-export default function Wireway() {
+export default function Wireway({ user, profile, onProfileUpdate, onShowPricing }) {
   const [entries,        setEntries]        = useState({});
   const [hourlyRate,     setHourlyRate]     = useState(85);
   const [markup,         setMarkup]         = useState(0.30);
@@ -1606,8 +1606,13 @@ export default function Wireway() {
               <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>{company.name || "Wireway"}</span>
               <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               {hasItems && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.02em" }}>${total.toLocaleString()}</span>}
+              {onShowPricing && (!profile || profile.plan === "free") && (
+                <button onClick={onShowPricing} style={{ padding:"5px 10px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.35)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", letterSpacing:"0.03em" }}>
+                  ⚡ Upgrade
+                </button>
+              )}
               <button onClick={() => { setCompanyDraft(company); setLogoDataUrl(company.logoDataUrl||""); setEditingCompany(true); }}
                 style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 ⚙ Company

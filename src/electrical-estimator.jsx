@@ -13,14 +13,10 @@ import { NEC_REF } from "./data/nec-reference";
 // ─── COUNTER ─────────────────────────────────────────────────────────────────
 function Counter({ value, onChange }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.04)", borderRadius:8, border:"1px solid rgba(255,255,255,0.08)", overflow:"hidden" }}>
-      {[{ sym:"−", fn:() => onChange(Math.max(0, value-1)), dis: value===0 }, { sym:"+", fn:() => onChange(value+1), dis: false }].map(({ sym, fn, dis }) => (
-        <button key={sym} onClick={fn} style={{ width:28, height:28, border:"none", background:"transparent", color: dis ? "rgba(255,255,255,0.15)" : "#e8c97a", fontSize:17, cursor: dis ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit", transition:"background 0.15s" }}
-          onMouseEnter={e => { if (!dis) e.currentTarget.style.background="rgba(232,201,122,0.1)"; }}
-          onMouseLeave={e => e.currentTarget.style.background="transparent"}
-        >{sym}</button>
-      ))}
-      <span style={{ width:24, textAlign:"center", fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:600, color:"#fff" }}>{value}</span>
+    <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.04)", borderRadius:7, border:"1px solid rgba(255,255,255,0.07)", overflow:"hidden" }}>
+      <button onClick={() => onChange(Math.max(0, value-1))} style={{ width:26, height:26, border:"none", background:"transparent", color: value===0 ? "rgba(255,255,255,0.12)" : "#e8c97a", fontSize:16, cursor: value===0 ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit" }}>−</button>
+      <span style={{ width:22, textAlign:"center", fontFamily:"'DM Mono',monospace", fontSize:12, fontWeight:700, color:"#fff" }}>{value}</span>
+      <button onClick={() => onChange(value+1)} style={{ width:26, height:26, border:"none", background:"transparent", color:"#e8c97a", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"inherit" }}>+</button>
     </div>
   );
 }
@@ -130,17 +126,17 @@ function CategorySection({ category, entries, onUpdate, hourlyRate, clientBuys, 
 // ─── PILL BUTTON ─────────────────────────────────────────────────────────────
 function Pill({ label, active, onClick, color = "#e8c97a" }) {
   return (
-    <button onClick={onClick} style={{ padding:"5px 11px", borderRadius:6, fontSize:12, fontWeight:600, border: active ? `1px solid ${color}55` : "1px solid rgba(255,255,255,0.09)", background: active ? `${color}13` : "rgba(255,255,255,0.04)", color: active ? color : "rgba(255,255,255,0.4)", cursor:"pointer", transition:"all 0.15s", fontFamily:"inherit" }}>{label}</button>
+    <button onClick={onClick} style={{ padding:"4px 9px", borderRadius:5, fontSize:11, fontWeight:600, border: active ? `1px solid ${color}45` : "1px solid rgba(255,255,255,0.07)", background: active ? `${color}12` : "transparent", color: active ? color : "rgba(255,255,255,0.38)", cursor:"pointer", transition:"all 0.15s", fontFamily:"inherit" }}>{label}</button>
   );
 }
 
 // ─── STAT CARD ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = "#e8c97a" }) {
   return (
-    <div style={{ flex:1, minWidth:100, background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"12px 14px" }}>
-      <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>{label}</div>
-      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color, letterSpacing:"-0.02em" }}>{value}</div>
-      {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.25)", marginTop:3, fontFamily:"'DM Mono',monospace" }}>{sub}</div>}
+    <div style={{ flex:1, minWidth:90, background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:9, padding:"10px 12px" }}>
+      <div style={{ fontSize:8, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>{label}</div>
+      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:500, color, letterSpacing:"-0.02em" }}>{value}</div>
+      {sub && <div style={{ fontSize:9, color:"rgba(255,255,255,0.22)", marginTop:2, fontFamily:"'DM Mono',monospace" }}>{sub}</div>}
     </div>
   );
 }
@@ -993,7 +989,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   };
 
   const TAB = (id, lbl) => (
-    <button onClick={() => setTab(id)} style={{ flex:1, padding:"9px 4px", border:"none", cursor:"pointer", fontFamily:"'Syne',sans-serif", fontSize:11, fontWeight:700, letterSpacing:"-0.01em", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.1)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.3)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent" }}>{lbl}</button>
+    <button onClick={() => setTab(id)} style={{ flex:1, padding:"9px 6px", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, letterSpacing:"0", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.08)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.32)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent", whiteSpace:"nowrap" }}>{lbl}</button>
   );
 
   const inputStyle = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:7, padding:"8px 11px", fontSize:13, color:"#fff", fontFamily:"inherit", width:"100%", transition:"border-color 0.15s" };
@@ -1031,159 +1027,160 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
               <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>{company.name || "Wireway"}</span>
               <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              {hasItems && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.02em" }}>${total.toLocaleString()}</span>}
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              {hasItems && (
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:600, color:"#e8c97a", letterSpacing:"-0.02em" }}>
+                  ${total.toLocaleString()}
+                </span>
+              )}
               {onShowPricing && (!userIsPro || onTrial) && (
-                <button onClick={onShowPricing} style={{ padding:"5px 10px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.35)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                  {onTrial ? `⚡ ${daysLeft}d left — Upgrade` : "⚡ Upgrade"}
+                <button onClick={onShowPricing} style={{ padding:"5px 11px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                  ⚡ {onTrial ? `${daysLeft}d` : "Pro"}
                 </button>
               )}
-              <button onClick={newQuote} style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+              <button onClick={newQuote} style={{ padding:"5px 11px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 + New
               </button>
-              <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-                ⚙ Account
-              </button>
-              <button onClick={() => { setCompanyDraft(company); setLogoDataUrl(company.logoDataUrl||""); setEditingCompany(true); }}
-                style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-                🏢 Company
-              </button>
+              {/* Combined account + company menu */}
+              <div style={{ display:"flex", gap:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:7, overflow:"hidden" }}>
+                <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", border:"none", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", borderRight:"1px solid rgba(255,255,255,0.06)" }}>
+                  Account
+                </button>
+                <button onClick={() => { setCompanyDraft(company); setLogoDataUrl(company.logoDataUrl||""); setEditingCompany(true); }} style={{ padding:"5px 10px", border:"none", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Company
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         <div style={{ maxWidth:800, margin:"0 auto", padding:"0 20px" }}>
 
-          {/* ── HERO ── */}
-          <div style={{ padding:"26px 0 20px", animation:"fadeUp 0.4s ease both" }} className="no-print">
-            <h1 style={{ fontFamily:"'Syne',sans-serif", fontSize:"clamp(20px,5vw,30px)", fontWeight:800, letterSpacing:"-0.04em", lineHeight:1.15, background:"linear-gradient(135deg,#ffffff 40%,rgba(232,201,122,0.85) 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:6 }}>
-              Build your estimate.<br />Win the job.
-            </h1>
-            <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", lineHeight:1.6 }}>
-              {CATEGORIES.flatMap(c => c.services).length} services · {CATEGORIES.length} categories · NEC 2023 · Material vs labor split · Client-supplied parts
-            </p>
-          </div>
+          {/* ── SPACER (replaces hero — cleaner on daily use) ── */}
+          <div style={{ height:20 }} className="no-print" />
 
-          {/* ── PAYMENT SUCCESS BANNER ── */}
-          {paymentSuccess && (
-            <div style={{ margin:"0 0 14px", padding:"12px 16px", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.25)", borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center" }} className="no-print">
-              <span style={{ fontSize:13, color:"#7dcea0", fontWeight:600 }}>
-                {paymentBanner === "pro" ? "🎉 Welcome to Wireway Pro! Your subscription is active." : "✓ Payment received! Quote has been marked as paid."}
-              </span>
-              <button onClick={() => { setPaymentSuccess(false); if(onClearBanner) onClearBanner(); }} style={{ background:"transparent", border:"none", color:"rgba(100,220,130,0.5)", fontSize:18, cursor:"pointer" }}>✕</button>
+          {/* ── STATUS BANNERS — one at a time, stacked cleanly ── */}
+          {(paymentSuccess || proGateMsg || (onTrial && daysLeft <= 30) || (!userIsPro && savedQuotes.length >= 3)) && (
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }} className="no-print">
+              {paymentSuccess && (
+                <div style={{ padding:"10px 14px", background:"rgba(100,220,130,0.07)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:12, color:"#7dcea0", fontWeight:600 }}>
+                    {paymentBanner === "pro" ? "🎉 Wireway Pro is now active." : "✓ Payment received — quote marked paid."}
+                  </span>
+                  <button onClick={() => { setPaymentSuccess(false); if(onClearBanner) onClearBanner(); }} style={{ background:"transparent", border:"none", color:"rgba(100,220,130,0.4)", fontSize:16, cursor:"pointer", padding:"0 4px" }}>✕</button>
+                </div>
+              )}
+              {proGateMsg && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,201,122,0.06)", border:"1px solid rgba(232,201,122,0.2)", borderRadius:9, fontSize:11, color:"rgba(232,201,122,0.9)", fontWeight:600 }}>
+                  ⚡ {proGateMsg}
+                </div>
+              )}
+              {onTrial && daysLeft <= 30 && daysLeft > 0 && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,201,122,0.05)", border:"1px solid rgba(232,201,122,0.15)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, color:"rgba(232,201,122,0.75)" }}>⏳ {daysLeft} day{daysLeft!==1?"s":""} remaining in your trial.</span>
+                  {onShowPricing && <button onClick={onShowPricing} style={{ padding:"4px 10px", borderRadius:5, border:"1px solid rgba(232,201,122,0.35)", background:"rgba(232,201,122,0.1)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade</button>}
+                </div>
+              )}
+              {!userIsPro && savedQuotes.length >= 3 && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,126,126,0.05)", border:"1px solid rgba(232,126,126,0.15)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, color:"rgba(232,126,126,0.75)" }}>Quote limit reached — upgrade for unlimited.</span>
+                  {onShowPricing && <button onClick={onShowPricing} style={{ padding:"4px 10px", borderRadius:5, border:"1px solid rgba(232,126,126,0.35)", background:"rgba(232,126,126,0.08)", color:"#e87e7e", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade</button>}
+                </div>
+              )}
             </div>
           )}
-
-          {/* ── PRO GATE TOAST ── */}
-          {proGateMsg && (
-            <div style={{ margin:"0 0 14px", padding:"11px 16px", background:"rgba(232,201,122,0.08)", border:"1px solid rgba(232,201,122,0.25)", borderRadius:10, fontSize:12, color:"#e8c97a", fontWeight:600 }} className="no-print">
-              ⚡ {proGateMsg}
-            </div>
-          )}
-
-          {/* ── TRIAL BANNER ── */}
-          {onTrial && daysLeft <= 30 && daysLeft > 0 && (
-            <div style={{ margin:"0 0 14px", padding:"10px 16px", background:"rgba(232,201,122,0.06)", border:"1px solid rgba(232,201,122,0.18)", borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12 }} className="no-print">
-              <span style={{ color:"rgba(232,201,122,0.8)" }}>⏳ {daysLeft} day{daysLeft!==1?"s":""} left in your free trial.</span>
-              {onShowPricing && <button onClick={onShowPricing} style={{ padding:"5px 12px", borderRadius:6, border:"1px solid rgba(232,201,122,0.4)", background:"rgba(232,201,122,0.12)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade Now</button>}
-            </div>
-          )}
-
-          {/* ── FREE TIER LIMIT BANNER ── */}
-          {!userIsPro && savedQuotes.length >= 3 && (
-            <div style={{ margin:"0 0 14px", padding:"10px 16px", background:"rgba(232,126,126,0.06)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12 }} className="no-print">
-              <span style={{ color:"rgba(232,126,126,0.8)" }}>⚠ Free plan limit: 3 saved quotes. Upgrade to save unlimited quotes.</span>
-              {onShowPricing && <button onClick={onShowPricing} style={{ padding:"5px 12px", borderRadius:6, border:"1px solid rgba(232,126,126,0.4)", background:"rgba(232,126,126,0.1)", color:"#e87e7e", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade</button>}
-            </div>
-          )}
-          <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"14px 16px", marginBottom:12, animation:"fadeUp 0.4s ease 0.04s both" }} className="no-print">
-            <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Client & Job Details</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-              {[
-                { ph:"Client name",    val:clientName,   set:setClientName },
-                { ph:"Job / address",  val:jobName,      set:setJobName },
-                { ph:"Client email",   val:clientEmail,  set:setClientEmail },
-                { ph:"Client phone",   val:clientPhone,  set:setClientPhone },
-              ].map(f => (
-                <input key={f.ph} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)}
-                  style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
-              ))}
-            </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:10, animation:"fadeUp 0.4s ease 0.04s both" }} className="no-print">
+            {[
+              { ph:"Client name",   val:clientName,  set:setClientName },
+              { ph:"Job / address", val:jobName,     set:setJobName },
+              { ph:"Email",         val:clientEmail, set:setClientEmail },
+              { ph:"Phone",         val:clientPhone, set:setClientPhone },
+            ].map(f => (
+              <input key={f.ph} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)}
+                style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
+            ))}
           </div>
 
           {/* ── RATE SETTINGS ── */}
-          <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"14px 16px", marginBottom:12, animation:"fadeUp 0.4s ease 0.08s both" }} className="no-print">
-            <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Rate Settings</div>
-            <div style={{ display:"flex", gap:18, flexWrap:"wrap" }}>
-              <div style={{ flex:1, minWidth:220 }}>
-                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginBottom:8 }}>Hourly Rate — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>${hourlyRate}/hr</span></div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+          <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.055)", borderRadius:12, padding:"12px 14px", marginBottom:10, animation:"fadeUp 0.4s ease 0.06s both" }} className="no-print">
+            <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:200 }}>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:7 }}>
+                  Hourly — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:700 }}>${hourlyRate}/hr</span>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
                   {HOURLY_RATES.map(r => <Pill key={r} label={`$${r}`} active={r===hourlyRate} onClick={() => setHourlyRate(r)} />)}
                 </div>
               </div>
-              <div style={{ flex:1, minWidth:170 }}>
-                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginBottom:8 }}>Markup — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:600 }}>{(markup*100).toFixed(0)}%</span></div>
-                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+              <div style={{ flex:1, minWidth:150 }}>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:7 }}>
+                  Markup — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:700 }}>{(markup*100).toFixed(0)}%</span>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
                   {MARKUP_OPTIONS.map(m => <Pill key={m.v} label={m.label} active={m.v===markup} onClick={() => setMarkup(m.v)} />)}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── GLOBAL SETTINGS BAR ── */}
-          <div style={{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap", animation:"fadeUp 0.4s ease 0.12s both" }} className="no-print">
-            <button onClick={() => setShowMaterials(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: showMaterials ? "1px solid rgba(232,201,122,0.35)" : "1px solid rgba(255,255,255,0.08)", background: showMaterials ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: showMaterials ? "#e8c97a" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              {showMaterials ? "◈" : "◇"} {showMaterials ? "Mat shown" : "Labor only"}
-            </button>
-            <button onClick={() => setClientBuysAll(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: clientBuysAll ? "1px solid rgba(120,200,255,0.35)" : "1px solid rgba(255,255,255,0.08)", background: clientBuysAll ? "rgba(120,200,255,0.08)" : "rgba(255,255,255,0.03)", color: clientBuysAll ? "#7ec8e8" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              {clientBuysAll ? "◉" : "○"} {clientBuysAll ? "Client buys parts" : "You supply parts"}
-            </button>
-            <button onClick={() => setFlatRateMode(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: flatRateMode ? "1px solid rgba(168,232,126,0.35)" : "1px solid rgba(255,255,255,0.08)", background: flatRateMode ? "rgba(168,232,126,0.08)" : "rgba(255,255,255,0.03)", color: flatRateMode ? "#a8e87e" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              $ {flatRateMode ? "Flat rate ON" : "Flat rate"}
-            </button>
-            <button onClick={() => setInvoiceMode(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: invoiceMode ? "1px solid rgba(184,126,232,0.35)" : "1px solid rgba(255,255,255,0.08)", background: invoiceMode ? "rgba(184,126,232,0.08)" : "rgba(255,255,255,0.03)", color: invoiceMode ? "#b87ee8" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              ◻ {invoiceMode ? "Invoice" : "Estimate"}
-            </button>
-            <button onClick={() => setTaxEnabled(v => !v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border: taxEnabled ? "1px solid rgba(232,184,126,0.35)" : "1px solid rgba(255,255,255,0.08)", background: taxEnabled ? "rgba(232,184,126,0.08)" : "rgba(255,255,255,0.03)", color: taxEnabled ? "#e8b87e" : "rgba(255,255,255,0.38)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-              % {taxEnabled ? `Tax ${(taxRate*100).toFixed(0)}%` : "Add tax"}
-            </button>
-          </div>
+          {/* ── UNIFIED SETTINGS + TOOLS PANEL ── */}
+          <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.055)", borderRadius:12, padding:"12px 14px", marginBottom:12, animation:"fadeUp 0.4s ease 0.08s both" }} className="no-print">
 
-          {taxEnabled && (
-            <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, padding:"7px 12px", background:"rgba(232,184,126,0.06)", border:"1px solid rgba(232,184,126,0.15)", borderRadius:8 }} className="no-print">
-              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Tax rate:</span>
-              {[0.05,0.06,0.07,0.08,0.09,0.10].map(r => (
-                <button key={r} onClick={() => setTaxRate(r)} style={{ padding:"3px 7px", borderRadius:5, fontSize:10, fontWeight:700, border: r===taxRate ? "1px solid rgba(232,184,126,0.5)" : "1px solid rgba(255,255,255,0.08)", background: r===taxRate ? "rgba(232,184,126,0.15)" : "rgba(255,255,255,0.03)", color: r===taxRate ? "#e8b87e" : "rgba(255,255,255,0.38)", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{(r*100).toFixed(0)}%</button>
+            {/* Row 1: toggles */}
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+              {[
+                { label: showMaterials ? "Mat · On" : "Mat · Off",     active: showMaterials,  action: () => setShowMaterials(v=>!v),  color:"#e8c97a" },
+                { label: clientBuysAll ? "Client buys" : "You supply", active: clientBuysAll,  action: () => setClientBuysAll(v=>!v), color:"#7ec8e8" },
+                { label: flatRateMode  ? "Flat rate" : "Itemized",     active: flatRateMode,   action: () => setFlatRateMode(v=>!v),  color:"#a8e87e" },
+                { label: invoiceMode   ? "Invoice" : "Estimate",       active: invoiceMode,    action: () => setInvoiceMode(v=>!v),   color:"#b87ee8" },
+                { label: taxEnabled    ? `Tax ${(taxRate*100).toFixed(0)}%` : "Add tax", active: taxEnabled, action: () => setTaxEnabled(v=>!v), color:"#e8b87e" },
+              ].map(t => (
+                <button key={t.label} onClick={t.action} style={{ padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:700, border: t.active ? `1px solid ${t.color}40` : "1px solid rgba(255,255,255,0.07)", background: t.active ? `${t.color}12` : "transparent", color: t.active ? t.color : "rgba(255,255,255,0.35)", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                  {t.label}
+                </button>
               ))}
             </div>
-          )}
 
-          {invoiceMode && (
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"7px 12px", background:"rgba(184,126,232,0.06)", border:"1px solid rgba(184,126,232,0.15)", borderRadius:8 }} className="no-print">
-              <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)", flexShrink:0 }}>Due:</span>
-              <input type="date" value={invoiceDueDate} onChange={e => setInvoiceDueDate(e.target.value)} style={{ ...inputStyle, width:"auto", fontSize:12, colorScheme:"dark" }} onFocus={focusGold} onBlur={blurGray} />
-              <button onClick={() => setInvoicePaid(v => !v)} style={{ padding:"4px 10px", borderRadius:6, border: invoicePaid ? "1px solid rgba(100,220,130,0.4)" : "1px solid rgba(255,255,255,0.1)", background: invoicePaid ? "rgba(100,220,130,0.1)" : "rgba(255,255,255,0.03)", color: invoicePaid ? "#7dcea0" : "rgba(255,255,255,0.4)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                {invoicePaid ? "✓ Paid" : "Mark Paid"}
-              </button>
+            {/* Conditional: tax rate or invoice due */}
+            {(taxEnabled || invoiceMode) && (
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:10, paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+                {taxEnabled && (
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Rate:</span>
+                    {[0.05,0.06,0.07,0.08,0.09,0.10].map(r => (
+                      <button key={r} onClick={() => setTaxRate(r)} style={{ padding:"3px 7px", borderRadius:4, fontSize:10, fontWeight:700, border: r===taxRate ? "1px solid rgba(232,184,126,0.5)" : "1px solid rgba(255,255,255,0.07)", background: r===taxRate ? "rgba(232,184,126,0.15)" : "transparent", color: r===taxRate ? "#e8b87e" : "rgba(255,255,255,0.3)", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{(r*100).toFixed(0)}%</button>
+                    ))}
+                  </div>
+                )}
+                {invoiceMode && (
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Due:</span>
+                    <input type="date" value={invoiceDueDate} onChange={e => setInvoiceDueDate(e.target.value)} style={{ ...inputStyle, width:"auto", fontSize:11, padding:"3px 8px", colorScheme:"dark" }} onFocus={focusGold} onBlur={blurGray} />
+                    <button onClick={() => setInvoicePaid(v => !v)} style={{ padding:"3px 9px", borderRadius:5, border: invoicePaid ? "1px solid rgba(100,220,130,0.4)" : "1px solid rgba(255,255,255,0.07)", background: invoicePaid ? "rgba(100,220,130,0.1)" : "transparent", color: invoicePaid ? "#7dcea0" : "rgba(255,255,255,0.35)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                      {invoicePaid ? "✓ Paid" : "Mark paid"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Row 2: tools — subtle divider separates from toggles */}
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap", paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+              {[
+                { label:"Wire Calc",  action:() => setWireCalcOpen(true)  },
+                { label:"Load Calc",  action:() => setLoadCalcOpen(true)  },
+                { label:"Checklist",  action:() => setChecklistOpen(true) },
+                { label:"Clients",    action:() => setShowClientDB(true)  },
+                { label:"+ Custom",   action:addCustomItem                },
+                hasItems ? { label:"Pull List", action:buildMaterialList } : null,
+              ].filter(Boolean).map(btn => (
+                <button key={btn.label} onClick={btn.action} style={{ padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:600, border:"1px solid rgba(255,255,255,0.07)", background:"transparent", color:"rgba(255,255,255,0.45)", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.06)"; e.currentTarget.style.color="#fff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.color="rgba(255,255,255,0.45)"; }}>
+                  {btn.label}
+                </button>
+              ))}
             </div>
-          )}
-
-          {/* ── PRO TOOLS ── */}
-          <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }} className="no-print">
-            {[
-              { icon:"⊡", label:"Wire Calc", action:() => setWireCalcOpen(true),  color:"#7eb8e8" },
-              { icon:"⊞", label:"Load Calc", action:() => setLoadCalcOpen(true),  color:"#a8e87e" },
-              { icon:"☑", label:"Checklist",  action:() => setChecklistOpen(true), color:"#e87e7e" },
-              { icon:"⊙", label:"Clients",    action:() => setShowClientDB(true),  color:"#e87eb8" },
-              { icon:"⊕", label:"Custom Item",action:addCustomItem,                color:"#e8c97a" },
-              hasItems ? { icon:"◫", label:"Pull List",  action:buildMaterialList,   color:"#e8d47e" } : null,
-            ].filter(Boolean).map(btn => (
-              <button key={btn.label} onClick={btn.action} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", borderRadius:8, border:`1px solid ${btn.color}20`, background:`${btn.color}08`, color:btn.color, fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.background=`${btn.color}18`}
-                onMouseLeave={e => e.currentTarget.style.background=`${btn.color}08`}>
-                {btn.icon} {btn.label}
-              </button>
-            ))}
           </div>
 
           {/* Custom line items */}
@@ -1231,10 +1228,11 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           {tab==="summary" && (
             <div style={{ animation:"fadeUp 0.3s ease both" }}>
               {!hasItems ? (
-                <div style={{ textAlign:"center", padding:"48px 20px", color:"rgba(255,255,255,0.2)" }} className="no-print">
-                  <div style={{ fontSize:30, marginBottom:10 }}>◎</div>
-                  <div style={{ fontSize:13 }}>No services selected yet.</div>
-                  <button onClick={() => setTab("services")} style={{ marginTop:18, padding:"9px 22px", background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.28)", borderRadius:8, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Open Services</button>
+                <div style={{ textAlign:"center", padding:"52px 20px 40px" }} className="no-print">
+                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.25)", marginBottom:16 }}>No services added yet</div>
+                  <button onClick={() => setTab("services")} style={{ padding:"9px 20px", background:"rgba(232,201,122,0.08)", border:"1px solid rgba(232,201,122,0.22)", borderRadius:8, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                    Browse Services →
+                  </button>
                 </div>
               ) : (
                 <>

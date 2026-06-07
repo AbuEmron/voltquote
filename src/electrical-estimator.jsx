@@ -756,7 +756,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
     };
     setCompany(fromProfile);
     setLogoDataUrl(profile.logo_url || "");
-  }, [profile?.id]);
+  }, [profile?.id, profile]);
 
   const saveCompany = async () => {
     setCompanySaving(true);

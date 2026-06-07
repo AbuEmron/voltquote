@@ -29,7 +29,6 @@ export function JobCalendar({ user, onClose }) {
   const [year,   setYear]   = useState(today.getFullYear());
   const [month,  setMonth]  = useState(today.getMonth());
   const [jobs,   setJobs]   = useState([]);
-  const [view,   setView]   = useState("month"); // month | week
   const [modal,  setModal]  = useState(null); // { job } or { date }
   const [draft,  setDraft]  = useState({});
   const [saving, setSaving] = useState(false);

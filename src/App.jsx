@@ -1,16 +1,22 @@
-// src/App.jsx — Full auth + routing with subscription enforcement
+// src/App.jsx
 import { useState, useEffect, useCallback } from "react";
 import { supabase, getProfile } from "./lib/supabase";
 import AuthScreen from "./AuthScreen";
 import SubscriptionPage from "./SubscriptionPage";
+import QuotePublicPage from "./QuotePublicPage";
 import Wireway from "./electrical-estimator";
 
 export default function App() {
-  const [session,     setSession]     = useState(undefined);
-  const [profile,     setProfile]     = useState(null);
-  const [loading,     setLoading]     = useState(true);
-  const [showPricing, setShowPricing] = useState(false);
+  const [session,       setSession]       = useState(undefined);
+  const [profile,       setProfile]       = useState(null);
+  const [loading,       setLoading]       = useState(true);
+  const [showPricing,   setShowPricing]   = useState(false);
   const [paymentBanner, setPaymentBanner] = useState("");
+
+  // Check if this is a public quote link: /quote/[id]
+  const path = window.location.pathname;
+  const quoteMatch = path.match(/^\/quote\/([a-f0-9-]{36})$/i);
+  const publicQuoteId = quoteMatch?.[1];
 
   const loadProfile = useCallback(async (userId) => {
     setLoading(true);
@@ -32,7 +38,7 @@ export default function App() {
       window.history.replaceState({}, "", "/");
     }
 
-    // Auth session
+    // Auth
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) loadProfile(session.user.id);
@@ -50,13 +56,10 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [loadProfile]);
 
-  // Refresh profile every 30s when subscription is pending
-  useEffect(() => {
-    if (!session?.user || !profile) return;
-    if (profile.subscription_status === "trialing" || profile.plan !== "free") return;
-    const timer = setInterval(() => loadProfile(session.user.id), 30000);
-    return () => clearInterval(timer);
-  }, [session, profile, loadProfile]);
+  // ── Public quote page — no auth needed ──
+  if (publicQuoteId) {
+    return <QuotePublicPage quoteId={publicQuoteId} />;
+  }
 
   // ── Loading ──
   if (loading || session === undefined) {
@@ -88,7 +91,7 @@ export default function App() {
     <Wireway
       user={session.user}
       profile={profile}
-      onProfileUpdate={(p) => { setProfile(p); if (onProfileUpdate) onProfileUpdate(p); }}
+      onProfileUpdate={setProfile}
       onShowPricing={() => setShowPricing(true)}
       paymentBanner={paymentBanner}
       onClearBanner={() => setPaymentBanner("")}

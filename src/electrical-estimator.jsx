@@ -717,27 +717,101 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
 
   const currentQuoteStatus = savedQuotes.find(q => q.quoteNumber === quoteNumber);
 
-  // ── Company profile (persisted in localStorage) ──
+  // ── Company profile — load from Supabase profile ──
   const [company, setCompany] = useState(() => {
+    // Seed from Supabase profile if available, fallback to localStorage
+    if (profile) {
+      return {
+        name:       profile.company_name    || "",
+        phone:      profile.company_phone   || "",
+        email:      profile.company_email   || "",
+        address:    profile.company_address || "",
+        license:    profile.license_number  || "",
+        website:    profile.company_website || "",
+        terms:      profile.terms           || "",
+        logoDataUrl: profile.logo_url       || "",
+        stripeKey:  profile.stripe_key      || "",
+      };
+    }
     try { return JSON.parse(localStorage.getItem("wireway_company") || "{}"); } catch { return {}; }
   });
   const [editingCompany, setEditingCompany] = useState(false);
   const [companyDraft,   setCompanyDraft]   = useState(company);
-  const [logoDataUrl,    setLogoDataUrl]    = useState(company.logoDataUrl || "");
+  const [logoDataUrl,    setLogoDataUrl]    = useState(company.logoDataUrl || profile?.logo_url || "");
+  const [companySaving,  setCompanySaving]  = useState(false);
 
-  const saveCompany = () => {
+  // Sync company from profile when profile loads
+  useEffect(() => {
+    if (!profile) return;
+    const fromProfile = {
+      name:        profile.company_name    || "",
+      phone:       profile.company_phone   || "",
+      email:       profile.company_email   || "",
+      address:     profile.company_address || "",
+      license:     profile.license_number  || "",
+      website:     profile.company_website || "",
+      terms:       profile.terms           || "",
+      logoDataUrl: profile.logo_url        || "",
+      stripeKey:   profile.stripe_key      || "",
+    };
+    setCompany(fromProfile);
+    setLogoDataUrl(profile.logo_url || "");
+  }, [profile?.id]);
+
+  const saveCompany = async () => {
+    setCompanySaving(true);
     const saved = { ...companyDraft, logoDataUrl };
     setCompany(saved);
+    // Also save to localStorage as fallback
     try { localStorage.setItem("wireway_company", JSON.stringify(saved)); } catch {}
+    // Save to Supabase profiles table
+    if (user?.id) {
+      const { updateProfile } = await import("./lib/supabase");
+      await updateProfile(user.id, {
+        company_name:    companyDraft.name    || null,
+        company_phone:   companyDraft.phone   || null,
+        company_email:   companyDraft.email   || null,
+        company_address: companyDraft.address || null,
+        license_number:  companyDraft.license || null,
+        company_website: companyDraft.website || null,
+        terms:           companyDraft.terms   || null,
+        logo_url:        logoDataUrl          || null,
+        stripe_key:      companyDraft.stripeKey || null,
+        hourly_rate:     hourlyRate,
+        default_markup:  markup,
+      });
+      if (onProfileUpdate) onProfileUpdate({ ...profile, company_name: companyDraft.name });
+    }
+    setCompanySaving(false);
     setEditingCompany(false);
   };
 
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // If logged in, upload to Supabase Storage
+    if (user?.id) {
+      const { uploadLogo } = await import("./lib/supabase");
+      const { url } = await uploadLogo(user.id, file);
+      if (url) { setLogoDataUrl(url); return; }
+    }
+    // Fallback: base64 in memory
     const reader = new FileReader();
     reader.onload = (ev) => setLogoDataUrl(ev.target.result);
     reader.readAsDataURL(file);
+  };
+
+  // ── New quote — reset all state ──
+  const newQuote = () => {
+    setEntries({});
+    setCustomItems([]);
+    setClientName(""); setClientEmail(""); setClientPhone("");
+    setJobName(""); setNotes("");
+    setQuoteNumber(""); setQuoteId(null);
+    setSigName(""); setSigDate(""); setSigSaved(false);
+    setInvoiceMode(false); setInvoiceDueDate(""); setInvoicePaid(false);
+    setTaxEnabled(false); setFlatRateMode(false);
+    setTab("services");
   };
 
   const upd = (id, data) => setEntries(p => ({ ...p, [id]: data }));
@@ -964,6 +1038,9 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                   {onTrial ? `⚡ ${daysLeft}d left — Upgrade` : "⚡ Upgrade"}
                 </button>
               )}
+              <button onClick={newQuote} style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                + New
+              </button>
               <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 ⚙ Account
               </button>
@@ -1300,17 +1377,23 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                   </div>
 
                   {/* ── SEND ACTIONS ── */}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:8 }} className="no-print">
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:8 }} className="no-print">
                     {[
-                      { icon:"✉", label:"Email Quote", desc: clientEmail || "Open mail app", action: emailQuote, color:"#7eb8e8" },
-                      { icon:"💬", label:"Text Quote",  desc: clientPhone || "Open messages", action: smsQuote,   color:"#a8e87e" },
-                      { icon:"⎘",  label:"Copy Quote",  desc: copied ? "Copied!" : "Plain text", action: copyQuote, color: copied ? "#7dcea0" : "#e8c97a" },
+                      { icon:"✉", label:"Email",      desc: clientEmail || "Mail app",    action: emailQuote,  color:"#7eb8e8" },
+                      { icon:"💬", label:"Text",       desc: clientPhone || "Messages",    action: smsQuote,    color:"#a8e87e" },
+                      { icon:"⎘",  label:"Copy",       desc: copied ? "Copied!" : "Text", action: copyQuote,   color: copied ? "#7dcea0" : "#e8c97a" },
+                      { icon:"🔗", label:"Share Link", desc: quoteId ? "Client link" : "Save first", action: () => {
+                        if (!quoteId) { setSaveMsg("Save the quote first."); setTimeout(() => setSaveMsg(""), 2000); return; }
+                        const link = `${window.location.origin}/quote/${quoteId}`;
+                        navigator.clipboard.writeText(link);
+                        setSaveMsg("Link copied!"); setTimeout(() => setSaveMsg(""), 2500);
+                      }, color:"#b87ee8" },
                     ].map(btn => (
-                      <button key={btn.label} onClick={btn.action} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"12px 8px", borderRadius:11, border:`1px solid ${btn.color}25`, background:`${btn.color}08`, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}
+                      <button key={btn.label} onClick={btn.action} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"11px 4px", borderRadius:11, border:`1px solid ${btn.color}25`, background:`${btn.color}08`, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}
                         onMouseEnter={e => e.currentTarget.style.background=`${btn.color}15`}
                         onMouseLeave={e => e.currentTarget.style.background=`${btn.color}08`}>
-                        <span style={{ fontSize:18 }}>{btn.icon}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:btn.color }}>{btn.label}</span>
+                        <span style={{ fontSize:16 }}>{btn.icon}</span>
+                        <span style={{ fontSize:10, fontWeight:700, color:btn.color }}>{btn.label}</span>
                         <span style={{ fontSize:9, color:"rgba(255,255,255,0.3)" }}>{btn.desc}</span>
                       </button>
                     ))}
@@ -1991,8 +2074,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             </div>
 
             <div style={{ display:"flex", gap:8 }}>
-              <button onClick={saveCompany} style={{ flex:1, padding:"12px", background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:10, color:"#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                Save Profile
+              <button onClick={saveCompany} disabled={companySaving} style={{ flex:1, padding:"12px", background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:10, color: companySaving ? "rgba(232,201,122,0.4)" : "#e8c97a", fontSize:13, fontWeight:700, cursor: companySaving ? "default" : "pointer", fontFamily:"inherit" }}>
+                {companySaving ? "Saving..." : "Save Profile"}
               </button>
               <button onClick={() => setEditingCompany(false)} style={{ padding:"12px 20px", background:"transparent", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, color:"rgba(255,255,255,0.4)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 Cancel

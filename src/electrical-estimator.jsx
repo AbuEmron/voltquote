@@ -959,15 +959,10 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               {hasItems && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:17, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.02em" }}>${total.toLocaleString()}</span>}
-              {onShowPricing && !userIsPro && (
+              {onShowPricing && (!userIsPro || onTrial) && (
                 <button onClick={onShowPricing} style={{ padding:"5px 10px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.35)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                  ⚡ Upgrade
+                  {onTrial ? `⚡ ${daysLeft}d left — Upgrade` : "⚡ Upgrade"}
                 </button>
-              )}
-              {onTrial && daysLeft > 0 && (
-                <span style={{ fontSize:9, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.15)", padding:"2px 7px", borderRadius:4, fontFamily:"'DM Mono',monospace" }}>
-                  {daysLeft}d trial
-                </span>
               )}
               <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 ⚙ Account
@@ -1010,7 +1005,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           )}
 
           {/* ── TRIAL BANNER ── */}
-          {onTrial && daysLeft <= 7 && daysLeft > 0 && (
+          {onTrial && daysLeft <= 30 && daysLeft > 0 && (
             <div style={{ margin:"0 0 14px", padding:"10px 16px", background:"rgba(232,201,122,0.06)", border:"1px solid rgba(232,201,122,0.18)", borderRadius:10, display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12 }} className="no-print">
               <span style={{ color:"rgba(232,201,122,0.8)" }}>⏳ {daysLeft} day{daysLeft!==1?"s":""} left in your free trial.</span>
               {onShowPricing && <button onClick={onShowPricing} style={{ padding:"5px 12px", borderRadius:6, border:"1px solid rgba(232,201,122,0.4)", background:"rgba(232,201,122,0.12)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade Now</button>}

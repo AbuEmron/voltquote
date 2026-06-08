@@ -972,8 +972,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
         </div>
       )}
 
-      {!showDashboard && (
-      <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
+      <div style={{ display: showDashboard ? "none" : "block", minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
 
         {/* ── HEADER ── */}
         <div style={{ borderBottom:"1px solid rgba(255,255,255,0.055)", background:"rgba(10,10,12,0.88)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }} className="no-print">
@@ -1665,7 +1664,6 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
         </div>
       </div>
       </div>
-      )}
 
       {/* ════════════ ACCOUNT MODAL ════════════ */}
       {showAccount && (

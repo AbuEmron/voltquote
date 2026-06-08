@@ -972,8 +972,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
         </div>
       )}
 
-      {/* ── MAIN ESTIMATOR (hidden when dashboard shown) ── */}
-      <div style={{ display: showDashboard ? "none" : "block" }}>
+      {!showDashboard && (
       <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
 
         {/* ── HEADER ── */}
@@ -2097,8 +2096,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           </div>
         </div>
       )}
-      </div> {/* closes main app minHeight div */}
-      </div> {/* closes display:none estimator wrapper */}
+      </div>
+      )}
 
       {/* ── PWA INSTALL BANNER ── */}
       {showInstall && (

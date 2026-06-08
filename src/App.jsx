@@ -1,6 +1,7 @@
-// src/App.jsx
+// src/App.jsx — root component with landing page, auth, dashboard, and main app
 import { useState, useEffect, useCallback } from "react";
 import { supabase, getProfile } from "./lib/supabase";
+import LandingPage from "./LandingPage";
 import AuthScreen from "./AuthScreen";
 import SubscriptionPage from "./SubscriptionPage";
 import QuotePublicPage from "./QuotePublicPage";
@@ -11,6 +12,7 @@ export default function App() {
   const [profile,       setProfile]       = useState(null);
   const [loading,       setLoading]       = useState(true);
   const [showPricing,   setShowPricing]   = useState(false);
+  const [authMode,      setAuthMode]      = useState(null); // null | "signin" | "signup"
   const [paymentBanner, setPaymentBanner] = useState("");
 
   // Check if this is a public quote link: /quote/[id]
@@ -26,7 +28,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Handle Stripe redirect params
     const params = new URLSearchParams(window.location.search);
     if (params.get("subscription") === "success") {
       setPaymentBanner("pro");
@@ -38,7 +39,6 @@ export default function App() {
       window.history.replaceState({}, "", "/");
     }
 
-    // Auth
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) loadProfile(session.user.id);
@@ -56,25 +56,39 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [loadProfile]);
 
-  // ── Public quote page — no auth needed ──
-  if (publicQuoteId) {
-    return <QuotePublicPage quoteId={publicQuoteId} />;
-  }
+  // Public quote page — no auth needed
+  if (publicQuoteId) return <QuotePublicPage quoteId={publicQuoteId} />;
 
-  // ── Loading ──
+  // Loading splash
   if (loading || session === undefined) {
     return (
       <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0c", flexDirection:"column", gap:16 }}>
-        <img src="/logo192.png" alt="Wireway" style={{ height:56, width:56, borderRadius:12, objectFit:"contain" }} />
+        <img src="/logo192.png" alt="Wireway" style={{ height:56, width:56, borderRadius:12, objectFit:"cover" }} />
         <div style={{ fontSize:12, color:"rgba(255,255,255,0.3)", fontFamily:"sans-serif", letterSpacing:"0.05em" }}>Loading Wireway...</div>
       </div>
     );
   }
 
-  // ── Not authenticated ──
-  if (!session) return <AuthScreen onAuth={() => {}} />;
+  // Not authenticated — show landing page or auth screen
+  if (!session) {
+    if (authMode) {
+      return (
+        <AuthScreen
+          initialMode={authMode}
+          onAuth={() => setAuthMode(null)}
+          onBack={() => setAuthMode(null)}
+        />
+      );
+    }
+    return (
+      <LandingPage
+        onSignIn={() => setAuthMode("signin")}
+        onSignUp={() => setAuthMode("signup")}
+      />
+    );
+  }
 
-  // ── Pricing page ──
+  // Pricing page
   if (showPricing) {
     return (
       <SubscriptionPage
@@ -86,7 +100,7 @@ export default function App() {
     );
   }
 
-  // ── Main app ──
+  // Main app
   return (
     <Wireway
       user={session.user}

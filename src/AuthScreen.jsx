@@ -15,8 +15,8 @@ const IS = {
   transition: "border-color 0.15s",
 };
 
-export default function AuthScreen({ onAuth }) {
-  const [mode,     setMode]     = useState("signin");
+export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
+  const [mode,     setMode]     = useState(initialMode);
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [name,     setName]     = useState("");
@@ -109,7 +109,12 @@ export default function AuthScreen({ onAuth }) {
             {loading ? "Please wait..." : mode === "signin" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link"}
           </button>
 
-          <div style={{ display:"flex", flexDirection:"column", gap:8, alignItems:"center" }}>
+          {/* Back to landing */}
+          {onBack && (
+            <button onClick={onBack} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.2)", fontSize:11, cursor:"pointer", fontFamily:"inherit", marginTop:8 }}>
+              ← Back to wireway.cc
+            </button>
+          )}
             {mode === "signin" && (
               <>
                 <button onClick={() => { setMode("signup"); setError(""); setSuccess(""); }} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>

@@ -12,6 +12,7 @@ import {
   AutoInvoiceButton, OnMyWayButton, ReviewRequestButton,
 } from "./features";
 import AIQuoteBuilder from "./AIQuoteBuilder";
+import Dashboard from "./Dashboard";
 
 
 
@@ -372,6 +373,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [paymentSuccess, setPaymentSuccess] = useState(!!paymentBanner);
   const [showAccount,    setShowAccount]    = useState(false);
   const [showCalendar,   setShowCalendar]   = useState(false);
+  const [showDashboard,  setShowDashboard]  = useState(true); // show dashboard by default
   const [showAIBuilder,  setShowAIBuilder]  = useState(false);
   const [installPrompt,  setInstallPrompt]  = useState(null);
   const [showInstall,    setShowInstall]    = useState(false);
@@ -692,6 +694,16 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
     reader.readAsDataURL(file);
   };
 
+  // ── Handle quick job card tap from Dashboard ──
+  const handleQuickJob = (job) => {
+    // Reset and pre-load common services for this job type
+    newQuote();
+    // Set job name
+    setJobName(job.label);
+    // Small delay to let state reset, then switch to services tab
+    setTimeout(() => { setShowDashboard(false); setTab("services"); }, 50);
+  };
+
   // ── Apply AI-generated estimate items to entries ──
   const applyAIEstimate = (items) => {
     const newEntries = { ...entries };
@@ -710,8 +722,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   };
 
   // ── New quote — reset all state ──
-  const newQuote = () => {
-    if (hasItems && !window.confirm("Start a new quote? Your current estimate will be cleared.")) return;
+  const newQuote = (fromDashboard = false) => {
+    if (!fromDashboard && hasItems && !window.confirm("Start a new quote? Your current estimate will be cleared.")) return;
     setEntries({});
     setCustomItems([]);
     setClientName(""); setClientEmail(""); setClientPhone("");
@@ -928,6 +940,40 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
         @media print{.no-print{display:none!important}.print-quote{background:#fff!important;color:#000!important;padding:32px!important}}
       `}</style>
 
+      {/* ── DASHBOARD ── */}
+      {showDashboard && (
+        <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(232,201,122,0.06) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif" }}>
+          <div style={{ borderBottom:"1px solid rgba(255,255,255,0.06)", background:"rgba(10,10,12,0.9)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }}>
+            <div style={{ maxWidth:680, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <img src="/logo192.png" alt="Wireway" style={{ height:30, width:30, borderRadius:7, objectFit:"cover" }} />
+                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.02em" }}>
+                  <span style={{ color:"#e8c97a" }}>WIRE</span>WAY
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                {onShowPricing && profile?.subscription_status !== "active" && (
+                  <button onClick={onShowPricing} style={{ padding:"5px 11px", borderRadius:6, background:"rgba(232,201,122,0.08)", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>⚡ Upgrade</button>
+                )}
+                <button onClick={() => { newQuote(true); setShowDashboard(false); }} style={{ padding:"6px 14px", borderRadius:7, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ New Estimate</button>
+                <button onClick={() => setShowAccount(true)} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Account</button>
+              </div>
+            </div>
+          </div>
+          <div style={{ maxWidth:680, margin:"0 auto", padding:"20px 20px 60px" }}>
+            <Dashboard
+              user={user} profile={profile}
+              onNewQuote={(job) => { newQuote(true); setJobName(job.label); setShowDashboard(false); setTab("services"); }}
+              onLoadQuote={(q) => { loadQuote(q); setShowDashboard(false); }}
+              onShowAI={() => { setShowDashboard(false); setTimeout(() => setShowAIBuilder(true), 100); }}
+              onOpenCalendar={() => { setShowDashboard(false); setTimeout(() => setShowCalendar(true), 100); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN ESTIMATOR (hidden when dashboard shown) ── */}
+      <div style={{ display: showDashboard ? "none" : "block" }}>
       <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
 
         {/* ── HEADER ── */}
@@ -952,6 +998,9 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                   ⚡ {onTrial && daysLeft > 0 ? `${daysLeft}d left` : "Upgrade"}
                 </button>
               )}
+              <button onClick={() => setShowDashboard(true)} style={{ padding:"5px 9px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:14, cursor:"pointer" }} title="Home">
+                🏠
+              </button>
               <button onClick={newQuote} style={{ padding:"5px 11px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 + New
               </button>
@@ -1616,6 +1665,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           </div>
         </div>
       </div>
+      </div>  {/* closes the showDashboard display:none wrapper */}
 
       {/* ════════════ ACCOUNT MODAL ════════════ */}
       {showAccount && (
@@ -2047,6 +2097,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           </div>
         </div>
       )}
+      </div> {/* end display:none estimator wrapper */}
+
       {/* ── PWA INSTALL BANNER ── */}
       {showInstall && (
         <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:300, padding:"14px 20px", background:"linear-gradient(135deg,#111115,#0a0a0c)", borderTop:"1px solid rgba(232,201,122,0.2)", display:"flex", alignItems:"center", gap:12, animation:"fadeUp 0.3s ease both" }} className="no-print">

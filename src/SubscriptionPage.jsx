@@ -178,8 +178,8 @@ export default function SubscriptionPage({ user, profile, onClose, onUpgrade }) 
         <div style={{ borderBottom:"1px solid rgba(255,255,255,0.06)", background:"rgba(10,10,12,0.9)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }}>
           <div style={{ maxWidth:900, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <div style={{ width:26, height:26, borderRadius:6, background:"linear-gradient(135deg,#e8c97a,#c9a84c)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#0a0a0c" }}>W</div>
-              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>Wireway</span>
+              <img src="/logo192.png" alt="Wireway" style={{ height:28, width:28, borderRadius:6, objectFit:"contain" }} />
+              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}><span style={{ color:"#e8c97a" }}>WIRE</span>WAY</span>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}>
               {currentPlan !== "free" && (

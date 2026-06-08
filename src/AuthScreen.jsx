@@ -65,10 +65,12 @@ export default function AuthScreen({ onAuth }) {
       <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"radial-gradient(ellipse 80% 50% at 50% 0%,rgba(232,201,122,0.07) 0%,transparent 60%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", padding:"24px 20px" }}>
 
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:40, animation:"fadeUp 0.4s ease both" }}>
-          <div style={{ width:38, height:38, borderRadius:9, background:"linear-gradient(135deg,#e8c97a,#c9a84c)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:800, color:"#0a0a0c" }}>W</div>
+          <img src="/logo192.png" alt="Wireway" style={{ height:52, width:52, borderRadius:12, objectFit:"contain" }} />
           <div>
-            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, letterSpacing:"-0.03em", color:"#fff" }}>Wireway</div>
-            <div style={{ fontSize:10, color:"rgba(232,201,122,0.6)", letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023 Professional</div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, letterSpacing:"-0.03em", color:"#fff", lineHeight:1.1 }}>
+              <span style={{ color:"#e8c97a" }}>WIRE</span><span style={{ color:"#fff" }}>WAY</span>
+            </div>
+            <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", letterSpacing:"0.1em", textTransform:"uppercase" }}>Electrical Estimator</div>
           </div>
         </div>
 

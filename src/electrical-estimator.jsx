@@ -511,6 +511,23 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [paymentSuccess, setPaymentSuccess] = useState(!!paymentBanner);
   const [showAccount,    setShowAccount]    = useState(false);
   const [showCalendar,   setShowCalendar]   = useState(false);
+  const [installPrompt,  setInstallPrompt]  = useState(null);
+  const [showInstall,    setShowInstall]    = useState(false);
+
+  // Capture PWA install prompt
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); setShowInstall(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const triggerInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setShowInstall(false);
+    setInstallPrompt(null);
+  };
   const [proGateMsg,     setProGateMsg]     = useState("");
 
   // ── Wire size calculator (NEC 310.15) ──
@@ -815,6 +832,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
 
   // ── New quote — reset all state ──
   const newQuote = () => {
+    if (hasItems && !window.confirm("Start a new quote? Your current estimate will be cleared.")) return;
     setEntries({});
     setCustomItems([]);
     setClientName(""); setClientEmail(""); setClientPhone("");
@@ -824,6 +842,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
     setInvoiceMode(false); setInvoiceDueDate(""); setInvoicePaid(false);
     setTaxEnabled(false); setFlatRateMode(false);
     setTab("services");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const upd = (id, data) => setEntries(p => ({ ...p, [id]: data }));
@@ -1038,7 +1057,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             <div style={{ display:"flex", alignItems:"center", gap:9 }}>
               {logoDataUrl
                 ? <img src={logoDataUrl} alt="logo" style={{ height:32, width:"auto", borderRadius:6, objectFit:"contain" }} />
-                : <WirecayMark size={32} />
+                : <img src="/logo192.png" alt="Wireway" style={{ height:32, width:32, borderRadius:6, objectFit:"contain" }} />
               }
               <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>{company.name || "Wireway"}</span>
               <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
@@ -1267,7 +1286,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                     <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16, paddingBottom:16, borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
                       {logoDataUrl
                         ? <img src={logoDataUrl} alt="logo" style={{ height:48, width:"auto", maxWidth:120, objectFit:"contain", borderRadius:6 }} />
-                        : <WirecayMark size={48} />
+                        : <img src="/logo192.png" alt="Wireway" style={{ height:48, width:48, borderRadius:8, objectFit:"contain" }} />
                       }
                       <div style={{ flex:1 }}>
                         <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:"#fff", letterSpacing:"-0.02em" }}>{company.name || "Your Company Name"}</div>
@@ -1705,7 +1724,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           {tab === "nec" && <NECReference />}
 
           <div style={{ textAlign:"center", marginTop:44, paddingTop:18, borderTop:"1px solid rgba(255,255,255,0.04)", fontSize:9, color:"rgba(255,255,255,0.13)", letterSpacing:"0.07em" }} className="no-print">
-            WIREWAY · NEC 2023 RESIDENTIAL ESTIMATING · PROFESSIONAL GRADE
+            WIREWAY · NEC 2023 · wireway.cc
           </div>
         </div>
       </div>
@@ -2071,7 +2090,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                 {logoDataUrl
                   ? <img src={logoDataUrl} alt="logo" style={{ height:52, width:"auto", maxWidth:140, objectFit:"contain", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)" }} />
-                  : <div style={{ width:52, height:52, borderRadius:10, background:"rgba(255,255,255,0.03)", border:"2px dashed rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}><WirecayMark size={40} /></div>
+                  : <div style={{ width:52, height:52, borderRadius:10, overflow:"hidden" }}><img src="/logo192.png" alt="Wireway" style={{ width:"100%", height:"100%", objectFit:"contain" }} /></div>
                 }
                 <div style={{ flex:1 }}>
                   <label style={{ display:"inline-block", padding:"8px 14px", background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", borderRadius:7, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer" }}>
@@ -2138,6 +2157,20 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* ── PWA INSTALL BANNER ── */}
+      {showInstall && (
+        <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:300, padding:"14px 20px", background:"linear-gradient(135deg,#111115,#0a0a0c)", borderTop:"1px solid rgba(232,201,122,0.2)", display:"flex", alignItems:"center", gap:12, animation:"fadeUp 0.3s ease both" }} className="no-print">
+          <img src="/logo192.png" alt="Wireway" style={{ height:36, width:36, borderRadius:7, objectFit:"contain" }} />
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#fff", letterSpacing:"-0.02em" }}>Install Wireway</div>
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:1 }}>Add to your home screen for the full app experience</div>
+          </div>
+          <button onClick={triggerInstall} style={{ padding:"9px 18px", borderRadius:8, background:"linear-gradient(135deg,rgba(232,201,122,0.22),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.35)", color:"#e8c97a", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+            Install
+          </button>
+          <button onClick={() => setShowInstall(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.3)", fontSize:20, cursor:"pointer", padding:"0 4px" }}>✕</button>
         </div>
       )}
     </>

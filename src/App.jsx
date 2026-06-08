@@ -65,7 +65,7 @@ export default function App() {
   if (loading || session === undefined) {
     return (
       <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0c", flexDirection:"column", gap:16 }}>
-        <div style={{ width:44, height:44, borderRadius:10, background:"linear-gradient(135deg,#e8c97a,#c9a84c)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:800, color:"#0a0a0c", fontFamily:"sans-serif" }}>W</div>
+        <img src="/logo192.png" alt="Wireway" style={{ height:56, width:56, borderRadius:12, objectFit:"contain" }} />
         <div style={{ fontSize:12, color:"rgba(255,255,255,0.3)", fontFamily:"sans-serif", letterSpacing:"0.05em" }}>Loading Wireway...</div>
       </div>
     );

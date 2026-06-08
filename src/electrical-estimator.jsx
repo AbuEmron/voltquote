@@ -436,8 +436,6 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const userIsPro = isPro(profile);
   const daysLeft  = trialDaysLeft(profile);
   const onTrial   = isTrialing(profile);
-  // Debug — remove after confirming upgrade button works
-  console.log("profile:", profile?.plan, profile?.subscription_status, "isPro:", userIsPro, "onTrial:", onTrial);
 
   const requirePro = (action) => {
     if (userIsPro) { action(); return; }

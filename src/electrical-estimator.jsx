@@ -1449,3 +1449,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
     </>
   );
 }
+/>
+    </>
+  );
+}

@@ -1,1031 +1,1734 @@
-import React, { useState, useEffect, useRef } from "react";
-
-// ─── CONSTANTS ───────────────────────────────────────────────────────────────
-
-const REGION_MULTIPLIERS = {
-  "New York City, NY":2.1,"Albany, NY":1.35,"Binghamton, NY":1.0,"Buffalo, NY":1.15,
-  "Rochester, NY":1.2,"Syracuse, NY":1.1,"Atlanta, GA":1.25,"Los Angeles, CA":1.9,
-  "Chicago, IL":1.6,"Houston, TX":1.1,"Phoenix, AZ":1.15,"Philadelphia, PA":1.55,
-  "San Francisco, CA":2.2,"Seattle, WA":1.75,"Miami, FL":1.3,"Denver, CO":1.4,
-  "Boston, MA":1.8,"Nashville, TN":1.2,"Charlotte, NC":1.15,"Dallas, TX":1.15,
-  "Minneapolis, MN":1.3,"Portland, OR":1.5,"Las Vegas, NV":1.2,"Baltimore, MD":1.45,
-  "Pittsburgh, PA":1.25,"Columbus, OH":1.1,"Cincinnati, OH":1.05,"Detroit, MI":1.2,
-  "St. Louis, MO":1.1,"Kansas City, MO":1.1,"Indianapolis, IN":1.05,"Louisville, KY":1.0,
-  "Memphis, TN":0.95,"New Orleans, LA":1.05,"Oklahoma City, OK":0.95,"Tulsa, OK":0.95,
-  "Albuquerque, NM":1.0,"Tucson, AZ":1.0,"Sacramento, CA":1.6,"San Diego, CA":1.8,
-  "Salt Lake City, UT":1.2,"Richmond, VA":1.2,"Virginia Beach, VA":1.15,"Raleigh, NC":1.2,
-  "Greensboro, NC":1.1,"Jacksonville, FL":1.1,"Tampa, FL":1.2,"Orlando, FL":1.15,
-  "Austin, TX":1.25,"San Antonio, TX":1.05,"El Paso, TX":0.9,"Boise, ID":1.1,
-  "Spokane, WA":1.2,"Anchorage, AK":1.8,"Honolulu, HI":2.0,"Rural/Small Town":0.85,
-};
-
-const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
-
-const SQFT_PRESETS = {
-  "Small (< 1000 sq ft)":   { receptacles:10, switches:6, snapLED:6,  smokeDetector:2, gfciOutlet:4, panelCircuit:2 },
-  "Medium (1000–2000 sq ft)":{ receptacles:18, switches:10,snapLED:10, smokeDetector:3, gfciOutlet:6, panelCircuit:3 },
-  "Large (2000–3500 sq ft)": { receptacles:28, switches:16,snapLED:16, smokeDetector:5, gfciOutlet:8, panelCircuit:5 },
-  "XL (3500+ sq ft)":        { receptacles:40, switches:22,snapLED:22, smokeDetector:7, gfciOutlet:10,panelCircuit:7 },
-};
-
-const TRANSLATIONS = {
-  en: {
-    appTagline:"Residential Electrical Estimator",
-    estimator:"Estimate", photo:"Photo", contractor:"My Info", ask:"Ask AI",
-    nec:"NEC 2023", history:"History", overhead:"Overhead", landing:"Home",
-    region:"Location & Pricing Mode", scopeTitle:"Scope of Work",
-    conditions:"Job Conditions", pricingOpts:"Pricing Options",
-    generateBtn:"Generate Estimate", selectItems:"Select items above to estimate",
-    totalEst:"Total Estimate", laborHours:"labor hours", estReady:"Estimate Ready",
-    customerView:"Customer View", copyQuote:"Copy Quote", copied:"Copied!",
-    profSummary:"Professional Summary", generating:"Generating summary...",
-    disclaimer:"Estimates based on regional averages · Final pricing varies · Always pull permits",
-    flatRate:"Flat Rate", timeAndMat:"Time & Material", hourlyRate:"Hourly rate",
-    matMarkup:"Materials markup", includePermit:"Include permit fee",
-    includeMat:"Include materials", sqftTitle:"Quick Estimate by Square Footage",
-    sqftDesc:"Select home size to auto-populate a typical rough-in scope.",
-    overheadTitle:"Overhead & True Cost Calculator",
-    overheadDesc:"Enter your monthly business costs to calculate your real break-even rate.",
-    historyTitle:"Saved Estimates", historyEmpty:"No saved estimates yet.",
-    saveEst:"Save Estimate", savedOk:"Saved!", invoiceTitle:"Generate Invoice",
-    invoiceBtn:"Create Invoice", pdfBtn:"Export PDF",
-    shareBtn:"Share VoltQuote", shareMsg:"Share VoltQuote with another electrician and both get 5 free estimates!",
-    langToggle:"Español",
-  },
-  es: {
-    appTagline:"Estimador Eléctrico Residencial",
-    estimator:"Estimar", photo:"Foto", contractor:"Mi Info", ask:"Preguntar AI",
-    nec:"NEC 2023", history:"Historial", overhead:"Gastos", landing:"Inicio",
-    region:"Ubicación y Modo de Precio", scopeTitle:"Alcance del Trabajo",
-    conditions:"Condiciones del Trabajo", pricingOpts:"Opciones de Precio",
-    generateBtn:"Generar Estimado", selectItems:"Selecciona elementos arriba",
-    totalEst:"Total del Estimado", laborHours:"horas de trabajo", estReady:"Estimado Listo",
-    customerView:"Vista del Cliente", copyQuote:"Copiar Cotización", copied:"¡Copiado!",
-    profSummary:"Resumen Profesional", generating:"Generando resumen...",
-    disclaimer:"Estimados basados en promedios regionales · El precio final varía · Siempre saque permisos",
-    flatRate:"Tarifa Fija", timeAndMat:"Tiempo y Material", hourlyRate:"Tarifa por hora",
-    matMarkup:"Margen de materiales", includePermit:"Incluir tarifa de permiso",
-    includeMat:"Incluir materiales", sqftTitle:"Estimado Rápido por Pies Cuadrados",
-    sqftDesc:"Seleccione el tamaño del hogar para llenar el alcance típico.",
-    overheadTitle:"Calculadora de Gastos Generales",
-    overheadDesc:"Ingrese sus costos mensuales para calcular su tarifa de equilibrio real.",
-    historyTitle:"Estimados Guardados", historyEmpty:"No hay estimados guardados.",
-    saveEst:"Guardar Estimado", savedOk:"¡Guardado!", invoiceTitle:"Generar Factura",
-    invoiceBtn:"Crear Factura", pdfBtn:"Exportar PDF",
-    shareBtn:"Compartir VoltQuote", shareMsg:"¡Comparte VoltQuote con otro electricista y ambos obtienen 5 estimados gratis!",
-    langToggle:"English",
-  }
-};
-
-const JOB_CATEGORIES = {
-  "Wiring Devices": {
-    receptacles:{low:80,high:120,label:"Receptacles (Outlets)",unit:"each",nec:"210.52",mat:8,hours:0.75},
-    gfciOutlet:{low:100,high:150,label:"GFCI Outlets",unit:"each",nec:"210.8",mat:18,hours:0.75},
-    afciOutlet:{low:110,high:160,label:"AFCI Outlets",unit:"each",nec:"210.12",mat:35,hours:0.75},
-    switches:{low:50,high:80,label:"Single-Pole Switches",unit:"each",nec:"404.2",mat:8,hours:0.5},
-    threewaySwitch:{low:80,high:130,label:"3-Way Switches",unit:"each",nec:"404.2",mat:15,hours:1.0},
-    dimmers:{low:90,high:140,label:"Dimmer Switches",unit:"each",nec:"404.14",mat:25,hours:0.75},
-    outdoorOutlet:{low:120,high:200,label:"Outdoor GFCI Outlets",unit:"each",nec:"210.8(A)(3)",mat:25,hours:1.25},
-    usbOutlet:{low:100,high:160,label:"USB Combo Outlets",unit:"each",nec:"210.52",mat:30,hours:0.75},
-    tamperResist:{low:90,high:130,label:"Tamper-Resistant Receptacles",unit:"each",nec:"406.12",mat:12,hours:0.75},
-  },
-  "Lighting": {
-    snapLED:{low:90,high:130,label:"Snap-In LED Recessed Lights",unit:"each",nec:"410.116",mat:25,hours:0.75},
-    canLight:{low:120,high:180,label:"Traditional Can Lights",unit:"each",nec:"410.116",mat:35,hours:1.25},
-    wallLight:{low:120,high:200,label:"Wall Sconces / Fixtures",unit:"each",nec:"410.36",mat:40,hours:1.0},
-    ceilingFan:{low:150,high:250,label:"Ceiling Fans (w/ light)",unit:"each",nec:"314.27",mat:80,hours:1.5},
-    chandelierLight:{low:200,high:400,label:"Chandelier / Heavy Fixture",unit:"each",nec:"314.27(D)",mat:100,hours:2.0},
-    undercabinet:{low:80,high:150,label:"Under-Cabinet Lighting",unit:"each",nec:"410.36",mat:40,hours:1.0},
-    outdoorLight:{low:100,high:180,label:"Outdoor Light Fixtures",unit:"each",nec:"410.10",mat:50,hours:1.25},
-    motionLight:{low:120,high:200,label:"Motion Sensor Lights",unit:"each",nec:"410.10",mat:60,hours:1.25},
-  },
-  "Panels & Service": {
-    panel100:{low:1200,high:2000,label:"100A Panel Replacement",unit:"flat",nec:"230.79",mat:400,hours:8},
-    panel200:{low:1800,high:3200,label:"200A Panel Replacement",unit:"flat",nec:"230.79",mat:600,hours:10},
-    panel400:{low:3500,high:6000,label:"400A Panel Upgrade",unit:"flat",nec:"230.79",mat:1200,hours:16},
-    subpanel100:{low:900,high:1600,label:"100A Subpanel Install",unit:"flat",nec:"225.30",mat:350,hours:7},
-    subpanel200:{low:1500,high:2500,label:"200A Subpanel Install",unit:"flat",nec:"225.30",mat:500,hours:10},
-    panelCircuit:{low:150,high:300,label:"New Branch Circuit",unit:"each",nec:"210.11",mat:50,hours:2},
-    meterBase:{low:400,high:800,label:"Meter Base Replacement",unit:"flat",nec:"230.66",mat:150,hours:4},
-    groundingElectrode:{low:200,high:400,label:"Grounding Electrode System",unit:"flat",nec:"250.50",mat:80,hours:3},
-    surgeProtector:{low:250,high:450,label:"Whole-Home Surge Protector",unit:"each",nec:"230.67",mat:120,hours:1.5},
-  },
-  "Appliance Circuits": {
-    evCharger:{low:500,high:900,label:"EV Charger (Level 2)",unit:"each",nec:"625.40",mat:200,hours:4},
-    dryer240:{low:250,high:450,label:"Dryer Circuit (240V)",unit:"each",nec:"210.11(C)(2)",mat:80,hours:2.5},
-    range240:{low:300,high:500,label:"Range/Oven Circuit (240V)",unit:"each",nec:"210.19",mat:80,hours:2.5},
-    acCircuit:{low:200,high:400,label:"A/C Dedicated Circuit",unit:"each",nec:"440.62",mat:75,hours:2},
-    hotTub:{low:800,high:1500,label:"Hot Tub / Spa Circuit",unit:"each",nec:"680.42",mat:250,hours:6},
-    pool:{low:1200,high:2500,label:"Pool Electrical",unit:"flat",nec:"680.26",mat:400,hours:10},
-    generator:{low:1500,high:3500,label:"Generator + Transfer Switch",unit:"flat",nec:"702.12",mat:800,hours:12},
-    solarTie:{low:800,high:2000,label:"Solar PV Interconnect",unit:"flat",nec:"705.12",mat:300,hours:8},
-  },
-  "Safety Devices": {
-    smokeDetector:{low:60,high:100,label:"Smoke Detectors (hardwired)",unit:"each",nec:"760.32",mat:25,hours:0.75},
-    coDetector:{low:60,high:100,label:"CO Detectors (hardwired)",unit:"each",nec:"760.32",mat:30,hours:0.75},
-    comboDet:{low:80,high:130,label:"Combo Smoke/CO Detectors",unit:"each",nec:"760.32",mat:40,hours:0.75},
-    afciBreaker:{low:80,high:140,label:"AFCI Breakers",unit:"each",nec:"210.12",mat:45,hours:0.75},
-    gfciBreaker:{low:80,high:140,label:"GFCI Breakers",unit:"each",nec:"210.8",mat:45,hours:0.75},
-  },
-  "Wiring & Rough-In": {
-    rewireRoom:{low:400,high:800,label:"Rewire Single Room",unit:"each",nec:"310.12",mat:150,hours:5},
-    rewireHome:{low:8000,high:20000,label:"Full Home Rewire",unit:"flat",nec:"310.12",mat:3000,hours:80},
-    aluminumRemediation:{low:150,high:300,label:"Aluminum Wiring Fix (per outlet)",unit:"each",nec:"110.14",mat:30,hours:1.5},
-    lowVoltage:{low:80,high:150,label:"Low Voltage Wiring (data/cable)",unit:"each",nec:"800.24",mat:20,hours:1.0},
-    conduitRun:{low:15,high:30,label:"Conduit Run (per linear foot)",unit:"lin ft",nec:"358.10",mat:5,hours:0.1},
-    wireRun:{low:3,high:8,label:"Wire Pull (per linear foot)",unit:"lin ft",nec:"310.15",mat:1,hours:0.03},
-    junctionBox:{low:20,high:50,label:"Junction Box (installed)",unit:"each",nec:"314.29",mat:8,hours:0.5},
-  },
-  "Outdoor & Specialty": {
-    outdoorPanel:{low:500,high:1000,label:"Outdoor Sub-Panel",unit:"flat",nec:"225.30",mat:200,hours:5},
-    landscape:{low:300,high:700,label:"Landscape Lighting System",unit:"flat",nec:"411.3",mat:150,hours:4},
-    shed:{low:600,high:1200,label:"Shed / Detached Garage Electric",unit:"flat",nec:"225.30",mat:200,hours:6},
-    securityCamera:{low:80,high:150,label:"Security Camera Power",unit:"each",nec:"210.52",mat:20,hours:1.0},
-  },
-};
-
-const CONDITION_ADJUSTMENTS = {
-  openWalls:{label:"Customer opens walls",labelEs:"Cliente abre paredes",multiplier:0.85,icon:"🪚",color:"#50c878"},
-  finishedWalls:{label:"Finished walls (fish wire)",labelEs:"Paredes terminadas",multiplier:1.2,icon:"🏠",color:"#e08a55"},
-  oldWiring:{label:"Old / knob-and-tube wiring",labelEs:"Cableado antiguo",multiplier:1.3,icon:"⚠️",color:"#e05555"},
-  newConstruction:{label:"New construction rough-in",labelEs:"Construcción nueva",multiplier:0.88,icon:"🏗️",color:"#50c878"},
-  atticAccess:{label:"Attic/crawl space access",labelEs:"Acceso al ático",multiplier:0.92,icon:"🔦",color:"#50c878"},
-  highCeilings:{label:"High ceilings (10ft+)",labelEs:"Techos altos (3m+)",multiplier:1.15,icon:"📏",color:"#e08a55"},
-  hazmat:{label:"Asbestos / hazmat present",labelEs:"Asbesto / materiales peligrosos",multiplier:1.4,icon:"☣️",color:"#e05555"},
-};
-
-const NEC_REFS = [
-  {article:"210.8",title:"GFCI Protection",summary:"GFCI protection required in bathrooms, garages, outdoors, crawl spaces, unfinished basements, kitchens (within 6ft of sink), boathouses, bathtub/shower areas, laundry areas.",category:"Safety"},
-  {article:"210.12",title:"AFCI Protection",summary:"Arc-fault protection required for all 120V, 15A and 20A branch circuits in bedrooms, family rooms, dining rooms, living rooms, parlors, libraries, dens, sunrooms, rec rooms, closets, hallways, laundry areas.",category:"Safety"},
-  {article:"210.52",title:"Dwelling Unit Receptacle Outlets",summary:"Receptacles every 12 feet along walls, within 6 feet of any wall break. Kitchen: 2 small appliance circuits, countertop receptacles every 4 feet. Bathroom: at least 1 within 3 feet of each basin.",category:"Receptacles"},
-  {article:"210.11",title:"Branch Circuit Requirements",summary:"At least two 20A small-appliance branch circuits for kitchen/dining. One 20A for laundry. One 20A for bathroom(s). These circuits cannot serve other outlets.",category:"Circuits"},
-  {article:"230.67",title:"Surge Protection (NEW 2023)",summary:"NEW in NEC 2023: Surge-protective devices now required on all services for dwelling units. Must be Type 1 or Type 2 SPD installed at or near the service entrance.",category:"Service"},
-  {article:"230.79",title:"Rating of Service Disconnecting Means",summary:"Single-family dwelling service must be rated at least 100A. Recommend 200A for modern homes. 400A may be needed for large homes with EV charging or solar.",category:"Service"},
-  {article:"240.6",title:"Standard Ampere Ratings",summary:"Standard sizes: 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400A.",category:"Overcurrent"},
-  {article:"250.50",title:"Grounding Electrode System",summary:"All electrodes present must be bonded: metal underground water pipe, metal building frame, concrete-encased electrode, ground ring, rod/pipe/plate electrodes.",category:"Grounding"},
-  {article:"250.122",title:"Equipment Grounding Conductor Sizing",summary:"15A=14AWG, 20A=12AWG, 30-60A=10AWG, 100A=8AWG, 200A=6AWG. Match EGC to circuit breaker rating.",category:"Grounding"},
-  {article:"310.12",title:"Conductor Sizing",summary:"120V 15A: 14 AWG. 120V 20A: 12 AWG. 240V 30A dryer: 10 AWG. 240V 50A range: 6 AWG. Always match conductor ampacity to breaker size.",category:"Wiring"},
-  {article:"314.16",title:"Box Fill Calculations",summary:"Each conductor = 1 volume unit. Each device (switch/outlet) = 2. Equipment grounding conductors group as 1. Box must have sufficient cubic inch volume.",category:"Wiring"},
-  {article:"314.27",title:"Outlet Boxes for Lighting",summary:"Ceiling boxes support fixtures up to 50 lbs. Over 35 lbs needs listed box. Fan-rated boxes required for ceiling fans — standard light boxes cannot support fan vibration.",category:"Lighting"},
-  {article:"404.2",title:"Switch Connections",summary:"Switches must interrupt the hot conductor. Neutral must be available at switch locations for smart switches. Use 3-way switches for multi-location control.",category:"Switches"},
-  {article:"406.12",title:"Tamper-Resistant Receptacles",summary:"All 125V, 15A and 20A receptacles in dwelling units must be tamper-resistant. Applies to all rooms including garages and outdoors.",category:"Receptacles"},
-  {article:"410.116",title:"Recessed Luminaire Installation",summary:"IC-rated fixtures required when in contact with insulation. Non-IC fixtures need 3-inch clearance. Thermal protection required on all recessed luminaires.",category:"Lighting"},
-  {article:"440.62",title:"A/C Disconnecting Means",summary:"A/C units need a readily accessible disconnect within sight, within 50 feet. Dedicated circuits sized per nameplate data.",category:"HVAC"},
-  {article:"625.40",title:"EV Charging Branch Circuit",summary:"Dedicated branch circuit required. Level 2 (240V) typically needs 40-50A with 6 AWG. GFCI protection required.",category:"EV/Special"},
-  {article:"680.26",title:"Pool Equipotential Bonding",summary:"All metal parts of pools must be bonded. 8 AWG solid copper minimum. Bonding is separate from grounding.",category:"EV/Special"},
-  {article:"702.12",title:"Standby Generator Systems",summary:"Transfer equipment required to prevent interconnection. Interlock kits or transfer switches acceptable. Proper grounding required.",category:"EV/Special"},
-  {article:"705.12",title:"Solar PV Interconnection",summary:"Load-side must not exceed 120% of bus rating. Rapid shutdown required for rooftop systems within 1 foot of array boundary.",category:"EV/Special"},
-];
-
-const CAT_COLORS = {
-  Safety:"#e05555",Receptacles:"#f5a623",Circuits:"#5588e0",Service:"#a855f7",
-  Overcurrent:"#e08a55",Grounding:"#55a878",Wiring:"#5588e0",Lighting:"#e8d44d",
-  Switches:"#f5a623",HVAC:"#55c8e0","EV/Special":"#a855f7","Low Voltage":"#8a9070",
-};
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-const fmt = (n) => "$" + n.toLocaleString();
-const fmtRange = (lo, hi) => lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`;
-const today = () => new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"});
-const invNum = () => "VQ-" + Date.now().toString().slice(-6);
-
+import { useState, useMemo, useEffect } from "react";
+import {
+  signOut,
+  getQuotes, upsertQuote, deleteQuote as dbDeleteQuote, updateQuoteStatus,
+  getClients, upsertClient,
+  isPro, isTrialing, trialDaysLeft,
+} from "./lib/supabase";
+import { CATEGORIES, MARKUP_OPTIONS, HOURLY_RATES, ALL_SERVICES } from "./data/catalog";
+import { NEC_REF } from "./data/nec-reference";
+import {
+  JobCalendar, PhotoAttachments, QuickBooksExport,
+  AutoInvoiceButton, OnMyWayButton, ReviewRequestButton,
+} from "./features";
+import AIQuoteBuilder from "./AIQuoteBuilder";
+import { Counter, Pill, StatCard, ServiceRow, CategorySection, NECReference } from "./WiremComponents";
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function Wireway({ user, profile, onProfileUpdate, onShowPricing, paymentBanner, onClearBanner }) {
+  // ── Core state ──
+  const [entries,        setEntries]        = useState({});
+  const [hourlyRate,     setHourlyRate]     = useState(profile?.hourly_rate || 85);
+  const [markup,         setMarkup]         = useState(Number(profile?.default_markup) || 0.30);
+  const [clientName,     setClientName]     = useState("");
+  const [clientEmail,    setClientEmail]    = useState("");
+  const [clientPhone,    setClientPhone]    = useState("");
+  const [jobName,        setJobName]        = useState("");
+  const [notes,          setNotes]          = useState("");
+  const [tab,            setTab]            = useState("services");
+  const [showMaterials,  setShowMaterials]  = useState(true);
+  const [clientBuysAll,  setClientBuysAll]  = useState(false);
+  const [copied,         setCopied]         = useState(false);
+  const [quoteNumber,    setQuoteNumber]    = useState("");
+  const [quoteId,        setQuoteId]        = useState(null);
+  const [signModal,      setSignModal]      = useState(false);
+  const [sigName,        setSigName]        = useState("");
+  const [sigDate,        setSigDate]        = useState("");
+  const [sigSaved,       setSigSaved]       = useState(false);
+  const [savedQuotes,    setSavedQuotes]    = useState([]);
+  const [saveMsg,        setSaveMsg]        = useState("");
+  const [customItems,    setCustomItems]    = useState([]);
+  const [taxEnabled,     setTaxEnabled]     = useState(false);
+  const [taxRate,        setTaxRate]        = useState(0.08);
+  const [invoiceMode,    setInvoiceMode]    = useState(false);
+  const [invoiceDueDate, setInvoiceDueDate] = useState("");
+  const [invoicePaid,    setInvoicePaid]    = useState(false);
+  const [flatRateMode,   setFlatRateMode]   = useState(false);
+  const [clients,        setClients]        = useState([]);
+  const [showClientDB,   setShowClientDB]   = useState(false);
+  const [clientSearch,   setClientSearch]   = useState("");
+  const [wireCalcOpen,   setWireCalcOpen]   = useState(false);
+  const [wireAmps,       setWireAmps]       = useState("");
+  const [wireLen,        setWireLen]        = useState("");
+  const [wireVolt,       setWireVolt]       = useState("120");
+  const [wireMat,        setWireMat]        = useState("copper");
+  const [loadCalcOpen,   setLoadCalcOpen]   = useState(false);
+  const [sqft,           setSqft]           = useState("");
+  const [smallAppl,      setSmallAppl]      = useState(2);
+  const [laundry,        setLaundry]        = useState(1);
+  const [dryer,          setDryer]          = useState(0);
+  const [range,          setRange]          = useState(0);
+  const [acTons,         setAcTons]         = useState(0);
+  const [heatKw,         setHeatKw]         = useState(0);
+  const [checklistOpen,  setChecklistOpen]  = useState(false);
+  const [checklistType,  setChecklistType]  = useState("service_upgrade");
+  const [checkedItems,   setCheckedItems]   = useState({});
+  const [depositOnly,    setDepositOnly]    = useState(true);
+  const [depositPercent, setDepositPercent] = useState(50);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError,   setPaymentError]   = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(!!paymentBanner);
+  const [showAccount,    setShowAccount]    = useState(false);
+  const [showCalendar,   setShowCalendar]   = useState(false);
+  const [showAIBuilder,  setShowAIBuilder]  = useState(false);
+  const [proGateMsg,     setProGateMsg]     = useState("");
 
-export default function ElectricalEstimator() {
-  const [lang, setLang] = useState("en");
-  const T = TRANSLATIONS[lang];
-  const [view, setView] = useState("landing");
-  const [activeTab, setActiveTab] = useState("estimator");
-  const [pricingMode, setPricingMode] = useState("flat");
-  const [quantities, setQuantities] = useState({});
-  const [conditions, setConditions] = useState({});
-  const [includeMaterials, setIncludeMaterials] = useState(true);
-  const [includePermit, setIncludePermit] = useState(true);
-  const [markupPct, setMarkupPct] = useState(20);
-  const [hourlyRate, setHourlyRate] = useState(85);
-  const [region, setRegion] = useState("Binghamton, NY");
-  const [result, setResult] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [aiSummary, setAiSummary] = useState("");
-  const [necSearch, setNecSearch] = useState("");
-  const [necCategory, setNecCategory] = useState("All");
-  const [expandedCats, setExpandedCats] = useState({"Wiring Devices":true});
-  const [photoAnalysis, setPhotoAnalysis] = useState("");
-  const [photoLoading, setPhotoLoading] = useState(false);
-  const [aiChat, setAiChat] = useState([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [showCustomer, setShowCustomer] = useState(false);
-  const [showInvoice, setShowInvoice] = useState(false);
-  const [savedEstimates, setSavedEstimates] = useState([]);
-  const [showShare, setShowShare] = useState(false);
-  const [referralCount, setReferralCount] = useState(0);
-  // Contractor info
-  const [contractorName, setContractorName] = useState("");
-  const [contractorPhone, setContractorPhone] = useState("");
-  const [contractorEmail, setContractorEmail] = useState("");
-  const [contractorLicense, setContractorLicense] = useState("");
-  const [contractorCity, setContractorCity] = useState("");
-  const [contractorState, setContractorState] = useState("NY");
-  // Overhead
-  const [overhead, setOverhead] = useState({insurance:300,vehicle:400,tools:100,phone:80,misc:200});
-  const [targetHours, setTargetHours] = useState(120);
-  const [desiredProfit, setDesiredProfit] = useState(25);
-  // Invoice
-  const [invoiceClient, setInvoiceClient] = useState("");
-  const [invoiceAddress, setInvoiceAddress] = useState(""); // eslint-disable-line no-unused-vars
-  const [invoiceNotes, setInvoiceNotes] = useState("");
-  const [invoiceDue, setInvoiceDue] = useState(30);
+  // ── Wire size calculator (NEC 310.15) ──
+  const wireResult = useMemo(() => {
+    const a = parseFloat(wireAmps);
+    if (!a || a <= 0) return null;
+    const cuTable = [{a:15,awg:"14"},{a:20,awg:"12"},{a:30,awg:"10"},{a:40,awg:"8"},{a:55,awg:"6"},{a:70,awg:"4"},{a:85,awg:"3"},{a:95,awg:"2"},{a:110,awg:"1"},{a:130,awg:"1/0"},{a:150,awg:"2/0"},{a:175,awg:"3/0"},{a:200,awg:"4/0"}];
+    const alTable = [{a:15,awg:"12"},{a:20,awg:"10"},{a:30,awg:"8"},{a:40,awg:"6"},{a:55,awg:"4"},{a:65,awg:"3"},{a:75,awg:"2"},{a:85,awg:"1"},{a:100,awg:"1/0"},{a:120,awg:"2/0"},{a:135,awg:"3/0"},{a:155,awg:"4/0"}];
+    const table = wireMat === "copper" ? cuTable : alTable;
+    const needed = a * 1.25;
+    const row = table.find(r => r.a >= needed) || table[table.length - 1];
+    const len = parseFloat(wireLen) || 0;
+    const cmilMap = {"14":4110,"12":6530,"10":10380,"8":16510,"6":26240,"4":41740,"3":52620,"2":66360,"1":83690,"1/0":105600,"2/0":133100,"3/0":167800,"4/0":211600};
+    const cmil = cmilMap[row.awg] || 10380;
+    const resistivity = wireMat === "copper" ? 10.4 : 17;
+    const vDrop = len > 0 ? (2 * resistivity * len * a) / cmil : 0;
+    const vDropPct = len > 0 ? (vDrop / parseFloat(wireVolt)) * 100 : 0;
+    return { awg: row.awg, ampacity: row.a, continuous: needed.toFixed(1), vDrop: vDrop.toFixed(2), vDropPct: vDropPct.toFixed(1), vDropOk: vDropPct < 3, nec: "NEC 310.15(B)(16)" };
+  }, [wireAmps, wireLen, wireVolt, wireMat]);
 
-  const fileRef = useRef(null);
-  const regionMultiplier = REGION_MULTIPLIERS[region] || 1.0;
+  // ── Load calculator (NEC 220.82) ──
+  const loadResult = useMemo(() => {
+    const sf = parseFloat(sqft) || 0;
+    if (!sf) return null;
+    const lighting = sf * 3;
+    const sabc = (smallAppl * 1500) + (laundry * 1500);
+    const genLoad = lighting + sabc;
+    const gen = genLoad <= 10000 ? genLoad : 10000 + (genLoad - 10000) * 0.4;
+    const dryerVA = dryer  * 5000;
+    const rangeVA = range  * 8000;
+    const acVA    = acTons * 3516;
+    const heatVA  = heatKw * 1000;
+    const hvac    = Math.max(acVA, heatVA);
+    const totalVA = gen + dryerVA + rangeVA + hvac;
+    const amps240 = totalVA / 240;
+    const panelSize = amps240 <= 100 ? "100A" : amps240 <= 150 ? "150A" : amps240 <= 200 ? "200A" : "400A";
+    return { lighting, sabc, gen: Math.round(gen), dryerVA, rangeVA, hvac, totalVA: Math.round(totalVA), amps240: Math.round(amps240), panelSize };
+  }, [sqft, smallAppl, laundry, dryer, range, acTons, heatKw]);
 
-  // Load saved estimates from storage
+  // ── Plan helpers ──
+  const userIsPro = isPro(profile);
+  const daysLeft  = trialDaysLeft(profile);
+  const onTrial   = isTrialing(profile);
+
+  const requirePro = (action) => {
+    if (userIsPro) { action(); return; }
+    setProGateMsg("This feature requires Wireway Pro. Upgrade to unlock.");
+    setTimeout(() => setProGateMsg(""), 3500);
+    if (onShowPricing) setTimeout(() => onShowPricing(), 400);
+  };
+
+  // ── Load Supabase data on mount ──
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("vq_estimates");
-      if (stored) setSavedEstimates(JSON.parse(stored));
-      const rc = localStorage.getItem("vq_referrals");
-      if (rc) setReferralCount(parseInt(rc)||0);
-    } catch {}
-  }, []);
+    if (!user?.id) return;
+    getQuotes(user.id).then(({ data }) => { if (data?.length) setSavedQuotes(data); });
+    getClients(user.id).then(({ data }) => { if (data?.length) setClients(data); });
+  }, [user?.id]);
 
-  const getCondMult = () => {
-    let m = 1.0;
-    Object.entries(conditions).forEach(([k,v]) => { if(v) m *= CONDITION_ADJUSTMENTS[k].multiplier; });
-    return m;
+  const addCustomItem = () => setCustomItems(p => [...p, { id: Date.now(), label: "", qty: 1, materialCost: 0, laborCost: 0, laborHours: 0 }]);
+  const updateCustomItem = (id, data) => setCustomItems(p => p.map(i => i.id === id ? { ...i, ...data } : i));
+  const removeCustomItem = (id) => setCustomItems(p => p.filter(i => i.id !== id));
+  const toggleCheck = (id) => setCheckedItems(p => ({ ...p, [id]: !p[id] }));
+
+  const saveClientToDB = async () => {
+    if (!clientName || !user?.id) return;
+    const { data } = await upsertClient(user.id, { name: clientName, email: clientEmail, phone: clientPhone });
+    if (data) setClients(prev => { const idx = prev.findIndex(c => c.id===data.id); return idx>=0 ? prev.map((c,i)=>i===idx?data:c) : [data,...prev]; });
   };
 
-  const totalOverhead = Object.values(overhead).reduce((a,b)=>a+(Number(b)||0),0);
-  const trueHourlyRate = targetHours > 0
-    ? Math.ceil((totalOverhead / targetHours) * (1 + desiredProfit/100))
-    : 0;
+  const loadClient = (c) => { setClientName(c.name); setClientEmail(c.email||""); setClientPhone(c.phone||""); setShowClientDB(false); };
 
-  const calculateEstimate = () => {
-    let totalLow=0, totalHigh=0, totalMat=0, totalHours=0;
-    const lineItems = [];
-    const condMult = getCondMult();
-    Object.entries(JOB_CATEGORIES).forEach(([cat,items]) => {
-      Object.entries(items).forEach(([key,item]) => {
-        const qty = quantities[key];
-        if (!qty || qty <= 0) return;
-        const low = Math.round(item.low * qty * regionMultiplier * condMult);
-        const high = Math.round(item.high * qty * regionMultiplier * condMult);
-        const mat = Math.round((item.mat||0) * qty);
-        const hrs = Math.round((item.hours||0) * qty * 10)/10;
-        totalLow+=low; totalHigh+=high; totalMat+=mat; totalHours+=hrs;
-        lineItems.push({label:item.label,qty,low,high,mat,hrs,nec:item.nec,cat,unit:item.unit});
+  const CHECKLISTS = {
+    service_upgrade: {
+      label: "Service Upgrade",
+      items: [
+        { id:"su1",  nec:"NEC 230.67",      text:"Whole-home surge protector installed (required 2023)" },
+        { id:"su2",  nec:"NEC 230.79",      text:"Service disconnect rated correctly (min 100A residential)" },
+        { id:"su3",  nec:"NEC 230.24",      text:"Service entrance clearances met (10 ft min at grade)" },
+        { id:"su4",  nec:"NEC 250.50",      text:"Grounding electrode system complete and bonded" },
+        { id:"su5",  nec:"NEC 250.104",     text:"Water and gas piping bonded" },
+        { id:"su6",  nec:"NEC 250.28",      text:"Main bonding jumper installed at panel" },
+        { id:"su7",  nec:"NEC 408.4",       text:"All circuits labeled on directory" },
+        { id:"su8",  nec:"NEC 110.26",      text:"36 in. working clearance maintained in front of panel" },
+        { id:"su9",  nec:"NEC 230.85",      text:"Exterior emergency disconnect installed (required 2023)" },
+        { id:"su10", nec:"NEC 408.7",       text:"All unused knockouts sealed" },
+      ],
+    },
+    new_circuit: {
+      label: "New Circuit / Rough-In",
+      items: [
+        { id:"nc1",  nec:"NEC 210.12",      text:"AFCI protection on all required circuits" },
+        { id:"nc2",  nec:"NEC 210.8",       text:"GFCI protection in all required locations" },
+        { id:"nc3",  nec:"NEC 300.4",       text:"Nail plates installed within 1.25 in. of framing edge" },
+        { id:"nc4",  nec:"NEC 300.14",      text:"6 in. free conductor at all boxes" },
+        { id:"nc5",  nec:"NEC 314.16",      text:"Box fill calculations verified (no overfill)" },
+        { id:"nc6",  nec:"NEC 334.30",      text:"NM cable secured within 12 in. of all boxes" },
+        { id:"nc7",  nec:"NEC 240.4",       text:"Conductor sized correctly for overcurrent device" },
+        { id:"nc8",  nec:"NEC 110.12",      text:"Workmanlike installation — cables properly routed" },
+        { id:"nc9",  nec:"NEC 406.12",      text:"All receptacles are tamper-resistant (TR rated)" },
+        { id:"nc10", nec:"NEC 210.52",      text:"Outlet spacing verified (no point more than 6 ft from outlet)" },
+      ],
+    },
+    pool: {
+      label: "Pool / Spa",
+      items: [
+        { id:"p1",   nec:"NEC 680.26",      text:"Equipotential bonding complete — all metal within 5 ft bonded" },
+        { id:"p2",   nec:"NEC 680.22",      text:"Receptacles at least 6 ft from pool edge (GFCI protected)" },
+        { id:"p3",   nec:"NEC 680.22",      text:"No luminaires within 12 ft horizontally of pool water" },
+        { id:"p4",   nec:"NEC 680.21(C)",   text:"GFCI protection on all pump motor circuits" },
+        { id:"p5",   nec:"NEC 680.23",      text:"Underwater lighting properly niched and rated" },
+        { id:"p6",   nec:"NEC 680.12",      text:"Equipment disconnect within sight of pool equipment" },
+        { id:"p7",   nec:"NEC 680.6",       text:"All equipment within 5 ft of pool grounded (insulated GEC)" },
+        { id:"p8",   nec:"NEC 680.42",      text:"Spa/hot tub has GFCI protection on all circuits" },
+      ],
+    },
+    final_inspection: {
+      label: "Final Inspection",
+      items: [
+        { id:"fi1",  nec:"NEC 314.25",      text:"All boxes have covers or faceplates" },
+        { id:"fi2",  nec:"NEC 408.4",       text:"Panel directory complete and legible" },
+        { id:"fi3",  nec:"NEC 410.16",      text:"Closet lighting fixtures are LED (no incandescent)" },
+        { id:"fi4",  nec:"NEC 200.11",      text:"All outlets tested — no reversed polarity" },
+        { id:"fi5",  nec:"NEC 210.8",       text:"GFCI outlets tested and functional" },
+        { id:"fi6",  nec:"NEC 210.12",      text:"AFCI breakers tested (test button)" },
+        { id:"fi7",  nec:"NEC 760.41",      text:"Smoke detectors interconnected and functional" },
+        { id:"fi8",  nec:"NEC 110.3(B)",    text:"All equipment installed per listing/labeling" },
+        { id:"fi9",  nec:"NEC 230.67",      text:"Surge protector installed and indicator light green" },
+        { id:"fi10", nec:"NEC 110.26",      text:"Panel working clearance verified and unobstructed" },
+        { id:"fi11", nec:"NEC 406.9",       text:"All outdoor outlets have in-use weatherproof covers" },
+        { id:"fi12", nec:"NEC 250.53",      text:"Ground rods driven full depth (8 ft min)" },
+      ],
+    },
+  };
+
+  // ── Generate quote number ──
+  const genQuoteNum = () => {
+    const yr  = new Date().getFullYear();
+    const seq = (savedQuotes.length + 1).toString().padStart(3, "0");
+    return `WW-${yr}-${seq}`;
+  };
+
+  // ── Save estimate to Supabase ──
+  const saveQuote = async () => {
+    if (!hasItems || !user?.id) return;
+    const qn = quoteNumber || genQuoteNum();
+    setQuoteNumber(qn);
+    const payload = {
+      id: quoteId || undefined,
+      quoteNumber: qn, clientName, clientEmail, clientPhone, jobName, notes,
+      hourlyRate, markup, showMaterials, clientBuysAll,
+      flatRateMode, invoiceMode, invoiceDueDate, invoicePaid,
+      taxEnabled, taxRate, entries, customItems,
+      totMat, totLab, totHrs, markupAmt, taxAmt, total, status: "draft",
+    };
+    const { data, error } = await upsertQuote(user.id, payload);
+    if (data) {
+      setQuoteId(data.id);
+      setSavedQuotes(prev => { const idx=prev.findIndex(q=>q.id===data.id); return idx>=0?prev.map((q,i)=>i===idx?data:q):[data,...prev]; });
+    }
+    saveClientToDB();
+    setSaveMsg(error ? "Save failed" : "Saved!"); setTimeout(() => setSaveMsg(""), 2000);
+  };
+
+  // ── Load a saved quote — fetch full data first ──
+  const loadQuote = async (q) => {
+    // If entries are missing (summary-only row), fetch the full quote
+    let fullQ = q;
+    if (!q.entries && q.id && user?.id) {
+      const { getQuote } = await import("./lib/supabase");
+      const { data } = await getQuote(q.id);
+      if (data) fullQ = data;
+    }
+    setEntries(fullQ.entries || {});
+    setCustomItems(fullQ.custom_items || fullQ.customItems || []);
+    setHourlyRate(fullQ.hourly_rate || fullQ.hourlyRate || 85);
+    setMarkup(Number(fullQ.markup) || 0.30);
+    setClientName(fullQ.client_name || fullQ.clientName || "");
+    setClientEmail(fullQ.client_email || fullQ.clientEmail || "");
+    setClientPhone(fullQ.client_phone || fullQ.clientPhone || "");
+    setJobName(fullQ.job_name || fullQ.jobName || "");
+    setNotes(fullQ.notes || "");
+    setShowMaterials(fullQ.show_materials ?? fullQ.showMaterials ?? true);
+    setClientBuysAll(fullQ.client_buys_all ?? fullQ.clientBuysAll ?? false);
+    setFlatRateMode(fullQ.flat_rate_mode ?? fullQ.flatRateMode ?? false);
+    setInvoiceMode(fullQ.invoice_mode ?? fullQ.invoiceMode ?? false);
+    setInvoiceDueDate(fullQ.invoice_due_date || fullQ.invoiceDueDate || "");
+    setInvoicePaid(fullQ.invoice_paid ?? fullQ.invoicePaid ?? false);
+    setTaxEnabled(fullQ.tax_enabled ?? fullQ.taxEnabled ?? false);
+    setTaxRate(Number(fullQ.tax_rate) || Number(fullQ.taxRate) || 0.08);
+    setQuoteNumber(fullQ.quote_number || fullQ.quoteNumber || "");
+    setQuoteId(fullQ.id || null);
+    setTab("summary");
+    setSaveMsg("Quote loaded");
+    setTimeout(() => setSaveMsg(""), 2000);
+  };
+
+  // ── Delete a saved quote ──
+  const deleteQuote = async (id) => {
+    if (user?.id) await dbDeleteQuote(id, user.id);
+    setSavedQuotes(prev => prev.filter(q => q.id !== id));
+  };
+
+  // ── Mark quote as accepted (signature) ──
+  const acceptQuote = async () => {
+    if (!sigName) return;
+    const date = sigDate || new Date().toLocaleDateString();
+    if (quoteId && user?.id) {
+      await updateQuoteStatus(quoteId, "accepted", { sig_name: sigName, sig_date: date, signed_at: new Date().toISOString() });
+    }
+    setSavedQuotes(prev => prev.map(q => q.id===quoteId ? { ...q, status:"accepted", sig_name:sigName } : q));
+    setSigSaved(true);
+    setTimeout(() => { setSignModal(false); setSigSaved(false); }, 2000);
+  };
+
+  const currentQuoteStatus = savedQuotes.find(q => q.quoteNumber === quoteNumber);
+
+  // ── Company profile — load from Supabase profile ──
+  const [company, setCompany] = useState(() => {
+    // Seed from Supabase profile if available, fallback to localStorage
+    if (profile) {
+      return {
+        name:       profile.company_name    || "",
+        phone:      profile.company_phone   || "",
+        email:      profile.company_email   || "",
+        address:    profile.company_address || "",
+        license:    profile.license_number  || "",
+        website:    profile.company_website || "",
+        terms:      profile.terms           || "",
+        logoDataUrl: profile.logo_url       || "",
+        stripeKey:  profile.stripe_key      || "",
+      };
+    }
+    try { return JSON.parse(localStorage.getItem("wireway_company") || "{}"); } catch { return {}; }
+  });
+  const [editingCompany, setEditingCompany] = useState(false);
+  const [companyDraft,   setCompanyDraft]   = useState(company);
+  const [logoDataUrl,    setLogoDataUrl]    = useState(company.logoDataUrl || profile?.logo_url || "");
+  const [companySaving,  setCompanySaving]  = useState(false);
+
+  // Sync company from profile when profile loads
+  useEffect(() => {
+    if (!profile) return;
+    const fromProfile = {
+      name:        profile.company_name    || "",
+      phone:       profile.company_phone   || "",
+      email:       profile.company_email   || "",
+      address:     profile.company_address || "",
+      license:     profile.license_number  || "",
+      website:     profile.company_website || "",
+      terms:       profile.terms           || "",
+      logoDataUrl: profile.logo_url        || "",
+      stripeKey:   profile.stripe_key      || "",
+    };
+    setCompany(fromProfile);
+    setLogoDataUrl(profile.logo_url || "");
+  }, [profile?.id, profile]);
+
+  const saveCompany = async () => {
+    setCompanySaving(true);
+    const saved = { ...companyDraft, logoDataUrl };
+    setCompany(saved);
+    // Also save to localStorage as fallback
+    try { localStorage.setItem("wireway_company", JSON.stringify(saved)); } catch {}
+    // Save to Supabase profiles table
+    if (user?.id) {
+      const { updateProfile } = await import("./lib/supabase");
+      await updateProfile(user.id, {
+        company_name:    companyDraft.name    || null,
+        company_phone:   companyDraft.phone   || null,
+        company_email:   companyDraft.email   || null,
+        company_address: companyDraft.address || null,
+        license_number:  companyDraft.license || null,
+        company_website: companyDraft.website || null,
+        terms:           companyDraft.terms   || null,
+        logo_url:        logoDataUrl          || null,
+        stripe_key:      companyDraft.stripeKey || null,
+        hourly_rate:     hourlyRate,
+        default_markup:  markup,
       });
+      if (onProfileUpdate) onProfileUpdate({ ...profile, company_name: companyDraft.name });
+    }
+    setCompanySaving(false);
+    setEditingCompany(false);
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // If logged in, upload to Supabase Storage
+    if (user?.id) {
+      const { uploadLogo } = await import("./lib/supabase");
+      const { url } = await uploadLogo(user.id, file);
+      if (url) { setLogoDataUrl(url); return; }
+    }
+    // Fallback: base64 in memory
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoDataUrl(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  // ── Apply AI-generated estimate items to entries ──
+  const applyAIEstimate = (items) => {
+    const newEntries = { ...entries };
+    items.forEach(item => {
+      newEntries[item.id] = {
+        qty:        item.qty,
+        variantIdx: item.variantIdx,
+        clientBuys: false,
+      };
     });
-    let tmTotal = 0;
-    if (pricingMode==="tm") tmTotal = Math.round(totalHours * hourlyRate + totalMat*(1+markupPct/100));
-    if (includeMaterials && pricingMode==="flat") {
-      const mLow = Math.round(totalMat*(markupPct/100));
-      const mHigh = Math.round(totalMat*(markupPct/100)*1.1);
-      totalLow+=mLow; totalHigh+=mHigh;
-      lineItems.push({label:"Materials Markup ("+markupPct+"%)",qty:null,low:mLow,high:mHigh,mat:0,hrs:0,nec:null});
-    }
-    if (includePermit) {
-      const fee = contractorState==="NY"||region.includes("NY")?150:100;
-      totalLow+=fee; totalHigh+=fee; if(pricingMode==="tm") tmTotal+=fee;
-      lineItems.push({label:"Permit Fee (est.)",qty:null,low:fee,high:fee,mat:0,hrs:0,nec:null});
-    }
-    const r = {lineItems,totalLow,totalHigh,totalMat,totalHours,tmTotal,region,pricingMode,date:today(),id:invNum()};
-    setResult(r);
-    fetchAiSummary(lineItems,totalLow,totalHigh,region,totalHours,pricingMode,tmTotal);
+    setEntries(newEntries);
+    setShowAIBuilder(false);
+    setTab("summary");
+    setSaveMsg(`${items.length} services added by AI`);
+    setTimeout(() => setSaveMsg(""), 3000);
   };
 
-  const fetchAiSummary = async (items,low,high,rgn,hrs,mode,tm) => {
-    setLoading(true); setAiSummary("");
-    const scope = items.filter(i=>i.qty).map(i=>`${i.label} x${i.qty}`).join(", ");
-    const priceStr = mode==="tm"?fmt(tm):`${fmt(low)}–${fmt(high)}`;
+  // ── New quote — reset all state ──
+  const newQuote = () => {
+    if (hasItems && !window.confirm("Start a new quote? Your current estimate will be cleared.")) return;
+    setEntries({});
+    setCustomItems([]);
+    setClientName(""); setClientEmail(""); setClientPhone("");
+    setJobName(""); setNotes("");
+    setQuoteNumber(""); setQuoteId(null);
+    setSigName(""); setSigDate(""); setSigSaved(false);
+    setInvoiceMode(false); setInvoiceDueDate(""); setInvoicePaid(false);
+    setTaxEnabled(false); setFlatRateMode(false);
+    setTab("services");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const upd = (id, data) => setEntries(p => ({ ...p, [id]: data }));
+
+  // ── Totals (includes custom items) ──
+  const { activeItems, totMat, totLab, totHrs, totClientBuysMat } = useMemo(() => {
+    const items = ALL_SERVICES.filter(s => entries[s.id]?.qty > 0).map(s => {
+      const e = entries[s.id];
+      const v = s.variants[e.variantIdx ?? 0];
+      const qty = e.qty;
+      const cBuys = e.clientBuys ?? clientBuysAll;
+      const mat  = s.materialCost * v.m * qty;
+      const lab  = s.laborCost    * v.m * qty;
+      const hrs  = s.laborHours   * v.m * qty;
+      return { ...s, qty, variantLabel: v.label, mat, lab, hrs, cBuys, lineTotal: cBuys ? lab : mat + lab };
+    });
+    // Add custom items
+    const custActive = customItems.filter(i => i.label && i.qty > 0).map(i => ({
+      ...i, variantLabel: "Custom", nec: "—", catColor: "#aaa", catLabel: "Custom",
+      mat: i.materialCost * i.qty, lab: i.laborCost * i.qty, hrs: i.laborHours * i.qty,
+      cBuys: false, lineTotal: (i.materialCost + i.laborCost) * i.qty,
+    }));
+    const all = [...items, ...custActive];
+    return {
+      activeItems: all,
+      totMat:           all.reduce((a,i) => a + (i.cBuys ? 0 : i.mat), 0),
+      totLab:           all.reduce((a,i) => a + i.lab, 0),
+      totHrs:           all.reduce((a,i) => a + i.hrs, 0),
+      totClientBuysMat: all.reduce((a,i) => a + (i.cBuys ? i.mat : 0), 0),
+    };
+  }, [entries, clientBuysAll, customItems]);
+
+  const subtotal   = totMat + totLab;
+  const markupAmt  = subtotal * markup;
+  const taxAmt     = taxEnabled ? totMat * taxRate : 0;
+  const total      = subtotal + markupAmt + taxAmt;
+  const hasItems   = activeItems.length > 0;
+
+  // Profit analysis
+  const grossProfit   = markupAmt + taxAmt;
+  const marginPct     = total > 0 ? (grossProfit / total * 100).toFixed(1) : "0";
+  const laborPct      = total > 0 ? (totLab / total * 100).toFixed(1) : "0";
+  const effectiveRate = totHrs > 0 ? (total / totHrs).toFixed(0) : "0";
+
+  // ── Request payment via Stripe Checkout ──
+  const requestPayment = async () => {
+    if (!hasItems || paymentLoading) return;
+    if (!company.stripeKey) {
+      setPaymentError("Add your Stripe Publishable Key in ⚙ Company Settings first.");
+      return;
+    }
+    setPaymentLoading(true);
+    setPaymentError("");
     try {
-      const r = await fetch("/api/claude",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:300,
-          messages:[{role:"user",content:`You are a professional electrical contractor. Write a warm, confident 3-sentence quote summary for a residential customer in ${rgn}. Scope: ${scope}. Total: ${priceStr}. Est. labor: ${hrs} hours. Mention NEC 2023 code compliance and that final price depends on site conditions. No bullets.`}]})
+      const qn = quoteNumber || genQuoteNum();
+      if (!quoteNumber) { setQuoteNumber(qn); saveQuote(); }
+
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteNumber: qn,
+          clientName,
+          clientEmail,
+          jobName,
+          total,
+          depositOnly,
+          depositPercent,
+          companyName: company.name,
+          lineItems: activeItems.slice(0, 5).map(i => ({ label: i.label, amount: i.lineTotal })),
+        }),
       });
-      const d = await r.json();
-      setAiSummary(d.content?.map(b=>b.text||"").join("")||"");
-    } catch { setAiSummary("Estimate complete. Contact us for a detailed on-site assessment."); }
-    setLoading(false);
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        setPaymentError(data.error || "Could not create checkout session.");
+      }
+    } catch (err) {
+      setPaymentError("Network error — check your connection and try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
   };
 
-  const saveEstimate = () => {
-    if (!result) return;
-    const est = {...result, summary:aiSummary, contractor:contractorName, clientName:invoiceClient};
-    const updated = [est, ...savedEstimates].slice(0,20);
-    setSavedEstimates(updated);
-    try { localStorage.setItem("vq_estimates", JSON.stringify(updated)); } catch {}
-    setSaved(true); setTimeout(()=>setSaved(false),2000);
-  };
-
-  const loadEstimate = (est) => {
-    setResult(est);
-    setAiSummary(est.summary||"");
-    setActiveTab("estimator");
-  };
-
-  const deleteEstimate = (id) => {
-    const updated = savedEstimates.filter(e=>e.id!==id);
-    setSavedEstimates(updated);
-    try { localStorage.setItem("vq_estimates", JSON.stringify(updated)); } catch {}
+  // ── Build plain-text quote ──
+  const buildQuoteText = () => {
+    const cBuyItems = activeItems.filter(i => i.cBuys);
+    const iSupply   = activeItems.filter(i => !i.cBuys);
+    const docType   = invoiceMode ? "INVOICE" : "ESTIMATE";
+    return [
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      company.name ? `  ${company.name.toUpperCase()}` : `  ELECTRICAL ${docType}`,
+      company.phone ? `  ${company.phone}` : null,
+      company.email ? `  ${company.email}` : null,
+      company.address ? `  ${company.address}` : null,
+      company.license ? `  License: ${company.license}` : null,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      quoteNumber && `${docType} #: ${quoteNumber}`,
+      clientName && `Client:   ${clientName}`,
+      clientPhone && `Phone:    ${clientPhone}`,
+      clientEmail && `Email:    ${clientEmail}`,
+      jobName    && `Job:      ${jobName}`,
+      `Date:     ${new Date().toLocaleDateString()}`,
+      invoiceMode && invoiceDueDate ? `Due:      ${invoiceDueDate}` : null,
+      "",
+      "SERVICES PROVIDED",
+      "──────────────────────────────────",
+      ...activeItems.map(i => flatRateMode
+        ? `  • ${i.label}${i.variantLabel && i.variantLabel !== "Custom" ? ` (${i.variantLabel})` : ""} × ${i.qty}  — $${i.lineTotal.toLocaleString()}`
+        : `  • ${i.label}${i.variantLabel && i.variantLabel !== "Custom" ? ` (${i.variantLabel})` : ""} × ${i.qty}`
+      ),
+      "",
+      ...((!flatRateMode && iSupply.length) ? [
+        "PARTS SUPPLIED BY US",
+        "──────────────────────────────────",
+        ...iSupply.map(i => `  ${i.label} × ${i.qty}  — $${i.mat.toLocaleString()}`),
+        `  Materials subtotal: $${totMat.toLocaleString()}`, "",
+      ] : []),
+      ...((!flatRateMode && cBuyItems.length) ? [
+        "CLIENT SUPPLIES PARTS (labor only billed)",
+        "──────────────────────────────────",
+        ...cBuyItems.map(i => `  ${i.label} × ${i.qty}  — est. $${i.mat.toLocaleString()} (not charged)`), "",
+      ] : []),
+      "COST BREAKDOWN",
+      "──────────────────────────────────",
+      (!flatRateMode && showMaterials) ? `  Materials:  $${totMat.toLocaleString()}` : null,
+      !flatRateMode ? `  Labor:      $${totLab.toLocaleString()}  (${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr)` : null,
+      !flatRateMode ? `  Markup:     $${markupAmt.toLocaleString()}  (${(markup*100).toFixed(0)}%)` : null,
+      taxEnabled ? `  Tax (${(taxRate*100).toFixed(1)}% on materials): $${taxAmt.toLocaleString()}` : null,
+      "──────────────────────────────────",
+      `  TOTAL:      $${total.toLocaleString()}`,
+      invoiceMode && invoicePaid ? "\n  ✓ PAID IN FULL" : null,
+      notes ? `\nNotes:\n${notes}` : null,
+      "",
+      company.terms ? `TERMS:\n${company.terms}` : null,
+      "",
+      "Generated by Wireway · NEC 2023 Professional Estimating · wireway.cc",
+    ].filter(Boolean).join("\n");
   };
 
   const copyQuote = () => {
-    if (!result) return;
-    const co = contractorName?`\n${contractorName}${contractorPhone?" · "+contractorPhone:""}${contractorLicense?" · Lic#"+contractorLicense:""}`:""
-    const lines = result.lineItems.map(i=>`  ${i.label}${i.qty?` (×${i.qty})`:""}: ${fmtRange(i.low,i.high)}`).join("\n");
-    const total = result.pricingMode==="tm"?fmt(result.tmTotal):`${fmt(result.totalLow)}–${fmt(result.totalHigh)}`;
-    navigator.clipboard.writeText(`VOLTQUOTE ESTIMATE${co}\nRegion: ${result.region} · ${result.date}\n${"─".repeat(44)}\n${lines}\n${"─".repeat(44)}\nTOTAL: ${total}\nEst. Labor: ~${result.totalHours} hours\n\n${aiSummary}\n\nValid 30 days. Final price subject to on-site inspection. All work to NEC 2023.`);
-    setCopied(true); setTimeout(()=>setCopied(false),2000);
+    navigator.clipboard.writeText(buildQuoteText());
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
   };
 
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    setPhotoLoading(true); setPhotoAnalysis("");
-    const b64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej();r.readAsDataURL(file);});
-    try {
-      const r = await fetch("/api/claude",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
-          messages:[{role:"user",content:[
-            {type:"image",source:{type:"base64",media_type:file.type,data:b64}},
-            {type:"text",text:"You are an experienced residential electrician. Analyze this photo. Identify visible electrical items and what work may be needed: receptacles, switches, panels, lights, fans, smoke detectors, GFCI needs, code violations, etc. Give a short paragraph then a bulleted list of suggested estimate items. Be specific and practical."}
-          ]}]})
-      });
-      const d = await r.json();
-      setPhotoAnalysis(d.content?.map(b=>b.text||"").join("")||"");
-    } catch { setPhotoAnalysis("Could not analyze photo. Please try again."); }
-    setPhotoLoading(false);
+  const emailQuote = () => {
+    const docType = invoiceMode ? "Invoice" : "Estimate";
+    const subject = encodeURIComponent(`Electrical ${docType}${clientName ? " for " + clientName : ""}${jobName ? " — " + jobName : ""}`);
+    const body = encodeURIComponent(buildQuoteText());
+    const to = clientEmail ? encodeURIComponent(clientEmail) : "";
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`);
   };
 
-  const sendChat = async () => {
-    if (!chatInput.trim()) return;
-    const userMsg = {role:"user",content:chatInput};
-    const history = [...aiChat,userMsg];
-    setAiChat(history); setChatInput(""); setChatLoading(true);
-    const ctx = result?`Current estimate: ${fmt(result.totalLow)}–${fmt(result.totalHigh)} in ${result.region}. Items: ${result.lineItems.filter(i=>i.qty).map(i=>`${i.label}×${i.qty}`).join(", ")}.`:"";
-    try {
-      const r = await fetch("/api/claude",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
-          system:`You are an expert residential electrician and contractor with 20+ years experience. Help with electrical questions, code, pricing, and scope. Be concise and practical. ${ctx}`,
-          messages:history})
-      });
-      const d = await r.json();
-      setAiChat([...history,{role:"assistant",content:d.content?.map(b=>b.text||"").join("")||""}]);
-    } catch { setAiChat([...history,{role:"assistant",content:"Sorry, couldn't respond. Please try again."}]); }
-    setChatLoading(false);
+  const smsQuote = () => {
+    const body = encodeURIComponent(
+      `Hi ${clientName || "there"}, here's your electrical estimate from ${company.name || "us"}:\n\n` +
+      activeItems.map(i => `• ${i.label} × ${i.qty}`).join("\n") +
+      `\n\nTOTAL: $${total.toLocaleString()}\n\nCall us: ${company.phone || ""}\nwireway.cc`
+    );
+    const to = clientPhone ? clientPhone.replace(/\D/g, "") : "";
+    window.open(`sms:${to}?body=${body}`);
   };
 
-  const handleShare = () => {
-    const newCount = referralCount + 1;
-    setReferralCount(newCount);
-    try { localStorage.setItem("vq_referrals", String(newCount)); } catch {}
-    if (navigator.share) {
-      navigator.share({title:"VoltQuote",text:"Free residential electrical estimator — fast, accurate, built for contractors.",url:"https://voltquote.app"});
-    } else {
-      navigator.clipboard.writeText("Check out VoltQuote — free electrical estimating tool for contractors: https://voltquote.app");
-      setShowShare(true); setTimeout(()=>setShowShare(false),3000);
-    }
+  // Material pull list
+  const buildMaterialList = () => {
+    const lines = [
+      "WIREWAY — MATERIAL PULL LIST",
+      `Job: ${jobName || "—"}  |  Date: ${new Date().toLocaleDateString()}`,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      ...activeItems.filter(i => !i.cBuys && i.mat > 0).map(i =>
+        `□  ${i.label} (${i.variantLabel})  qty: ${i.qty}  est: $${i.mat.toLocaleString()}`
+      ),
+      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+      `TOTAL MATERIAL COST: $${totMat.toLocaleString()}`,
+    ].join("\n");
+    navigator.clipboard.writeText(lines);
+    setSaveMsg("Material list copied!"); setTimeout(() => setSaveMsg(""), 2000);
   };
 
-  const applySquareFootage = (preset) => {
-    setQuantities(q=>({...q,...preset}));
-    setActiveTab("estimator");
-    setExpandedCats({"Wiring Devices":true,"Lighting":true,"Safety Devices":true});
-  };
-
-  const hasItems = Object.values(quantities).some(v=>v>0);
-  const totalItems = Object.values(quantities).reduce((a,b)=>a+(b||0),0);
-  const filteredNEC = NEC_REFS.filter(r=>{
-    const mc = necCategory==="All"||r.category===necCategory;
-    const ms = !necSearch||r.article.toLowerCase().includes(necSearch.toLowerCase())||r.title.toLowerCase().includes(necSearch.toLowerCase())||r.summary.toLowerCase().includes(necSearch.toLowerCase());
-    return mc&&ms;
-  });
-  const necCats = ["All",...new Set(NEC_REFS.map(r=>r.category))];
-
-  // ── LANDING PAGE ──────────────────────────────────────────────────────────
-  if (view==="landing") return (
-    <div style={{minHeight:"100vh",background:"#0a0a0f",color:"#e8e0d0",fontFamily:"Georgia,serif"}}>
-      <div style={{position:"fixed",inset:0,background:"radial-gradient(ellipse at 20% 40%,#1a1a2e 0%,transparent 55%),radial-gradient(ellipse at 80% 10%,#16213e 0%,transparent 50%)",pointerEvents:"none"}}/>
-      <div style={{position:"relative",zIndex:1}}>
-        {/* Nav */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 32px",borderBottom:"1px solid rgba(245,166,35,0.15)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#f5a623,#e8860a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 0 20px rgba(245,166,35,0.4)"}}>⚡</div>
-            <span style={{fontSize:18,fontWeight:700}}><span style={{color:"#f5a623"}}>VOLT</span><span style={{color:"rgba(245,166,35,0.4)",margin:"0 3px"}}>●</span><span style={{color:"#fff",fontWeight:400}}>QUOTE</span></span>
-          </div>
-          <div style={{display:"flex",gap:12,alignItems:"center"}}>
-            <button onClick={()=>setLang(lang==="en"?"es":"en")} style={{...ghostBtn,fontSize:11}}>{T.langToggle}</button>
-            <button onClick={()=>setView("app")} style={{background:"linear-gradient(135deg,#f5a623,#e8860a)",border:"none",borderRadius:8,padding:"10px 22px",color:"#0a0a0f",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"monospace",letterSpacing:1}}>Try Free →</button>
-          </div>
-        </div>
-        {/* Hero */}
-        <div style={{maxWidth:700,margin:"0 auto",textAlign:"center",padding:"80px 24px 60px"}}>
-          <div style={{fontSize:11,letterSpacing:5,color:"#f5a623",fontFamily:"monospace",textTransform:"uppercase",marginBottom:20}}>Built for the trades</div>
-          <h1 style={{fontSize:"clamp(32px,6vw,58px)",fontWeight:700,lineHeight:1.15,margin:"0 0 24px",color:"#fff"}}>
-            Professional electrical estimates<br/><span style={{color:"#f5a623"}}>in under 5 minutes.</span>
-          </h1>
-          <p style={{fontSize:16,color:"#8a8070",lineHeight:1.8,maxWidth:520,margin:"0 auto 40px"}}>
-            Location-adjusted pricing for 55+ US cities. NEC 2023 code reference built in. AI-powered quote summaries. Made for residential electricians who work from the truck.
-          </p>
-          <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
-            <button onClick={()=>setView("app")} style={{background:"linear-gradient(135deg,#f5a623,#e8860a)",border:"none",borderRadius:10,padding:"16px 36px",color:"#0a0a0f",fontWeight:700,fontSize:15,cursor:"pointer",boxShadow:"0 4px 30px rgba(245,166,35,0.4)"}}>⚡ Start Free Estimate</button>
-            <button onClick={()=>{setView("app");setActiveTab("nec");}} style={{...ghostBtn,padding:"16px 28px",fontSize:14}}>📖 Browse NEC 2023</button>
-          </div>
-          <p style={{fontSize:11,color:"#3a3040",fontFamily:"monospace",marginTop:20,letterSpacing:1}}>FREE · NO SIGNUP · WORKS OFFLINE</p>
-        </div>
-        {/* Features grid */}
-        <div style={{maxWidth:900,margin:"0 auto",padding:"0 24px 80px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:20}}>
-          {[
-            {icon:"📍",title:"Location-Based Pricing",desc:"Rates auto-adjust for 55+ cities across every US state. Binghamton to San Francisco."},
-            {icon:"⚡",title:"60+ Line Items",desc:"Every residential job type — panels, rewires, EV chargers, pools, generators and more."},
-            {icon:"📷",title:"Photo Analysis",desc:"Upload a room photo. AI identifies what electrical work is needed and suggests items."},
-            {icon:"📖",title:"NEC 2023 Built In",desc:"22 key residential code articles with plain-English summaries. Always at your fingertips."},
-            {icon:"💬",title:"AI Electrician Chat",desc:"Ask code questions, get pricing advice, clarify scope. Context-aware for your estimate."},
-            {icon:"👤",title:"Customer View & Invoice",desc:"Professional quote the customer sees. One-click invoice. Copy or export instantly."},
-            {icon:"📊",title:"Overhead Calculator",desc:"Know your real break-even rate. Enter your monthly costs and let VoltQuote do the math."},
-            {icon:"🌐",title:"English & Español",desc:"Full bilingual support. Switch languages in one tap — built for the whole workforce."},
-          ].map((f,i)=>(
-            <div key={i} style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(245,166,35,0.12)",borderRadius:12,padding:22}}>
-              <div style={{fontSize:28,marginBottom:10}}>{f.icon}</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:6}}>{f.title}</div>
-              <div style={{fontSize:12,color:"#6a6055",lineHeight:1.7}}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-        {/* Pricing */}
-        <div style={{maxWidth:700,margin:"0 auto",padding:"0 24px 80px",textAlign:"center"}}>
-          <div style={{fontSize:11,letterSpacing:4,color:"#f5a623",fontFamily:"monospace",textTransform:"uppercase",marginBottom:16}}>Simple pricing</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,maxWidth:500,margin:"0 auto"}}>
-            {[
-              {name:"Free",price:"$0",desc:"5 estimates/month\nAll core features\nNEC 2023 reference"},
-              {name:"Pro",price:"$9.99/mo",desc:"Unlimited estimates\nSaved history\nInvoice generator\nPriority support",highlight:true},
-            ].map(p=>(
-              <div key={p.name} style={{background:p.highlight?"rgba(245,166,35,0.08)":"rgba(255,255,255,0.02)",border:`1px solid ${p.highlight?"rgba(245,166,35,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:12,padding:24}}>
-                <div style={{fontSize:14,fontWeight:700,color:p.highlight?"#f5a623":"#fff",marginBottom:8}}>{p.name}</div>
-                <div style={{fontSize:26,fontWeight:700,color:"#fff",marginBottom:12}}>{p.price}</div>
-                <div style={{fontSize:11,color:"#6a6055",lineHeight:2,whiteSpace:"pre-line"}}>{p.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* CTA */}
-        <div style={{textAlign:"center",padding:"0 24px 80px"}}>
-          <button onClick={()=>setView("app")} style={{background:"linear-gradient(135deg,#f5a623,#e8860a)",border:"none",borderRadius:10,padding:"18px 48px",color:"#0a0a0f",fontWeight:700,fontSize:16,cursor:"pointer",boxShadow:"0 4px 30px rgba(245,166,35,0.35)"}}>
-            ⚡ Start Your First Estimate — Free
-          </button>
-          <p style={{fontSize:11,color:"#3a3040",fontFamily:"monospace",marginTop:16,letterSpacing:1}}>NO CREDIT CARD · NO SIGNUP · INSTANT ACCESS</p>
-        </div>
-        <div style={{textAlign:"center",padding:"20px",borderTop:"1px solid rgba(255,255,255,0.04)"}}>
-          <p style={{fontSize:10,color:"#2a2030",fontFamily:"monospace",margin:0}}>VoltQuote · The electrician's estimating tool · voltquote.app</p>
-        </div>
-      </div>
-    </div>
+  const TAB = (id, lbl) => (
+    <button onClick={() => setTab(id)} style={{ flex:1, padding:"9px 6px", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, letterSpacing:"0", transition:"all 0.2s", background: tab===id ? "rgba(232,201,122,0.08)" : "transparent", color: tab===id ? "#e8c97a" : "rgba(255,255,255,0.32)", borderBottom: tab===id ? "2px solid #e8c97a" : "2px solid transparent", whiteSpace:"nowrap" }}>{lbl}</button>
   );
 
-  // ── INVOICE VIEW ──────────────────────────────────────────────────────────
-  if (showInvoice && result) return (
-    <div style={{minHeight:"100vh",background:"#f4f1ea",fontFamily:"Georgia,serif",color:"#1a1a1a",padding:"32px 16px"}}>
-      <div style={{maxWidth:640,margin:"0 auto"}}>
-        <div style={{background:"#1a1a2e",color:"white",borderRadius:"12px 12px 0 0",padding:"28px 32px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div>
-            <div style={{fontSize:10,letterSpacing:4,color:"#f5a623",fontFamily:"monospace",marginBottom:4}}>INVOICE</div>
-            <div style={{fontSize:20,fontWeight:700}}>{contractorName||"VoltQuote Contractor"}</div>
-            {contractorPhone&&<div style={{fontSize:12,color:"#c0b89a",marginTop:2}}>📞 {contractorPhone}</div>}
-            {contractorEmail&&<div style={{fontSize:12,color:"#c0b89a"}}>✉️ {contractorEmail}</div>}
-            {contractorLicense&&<div style={{fontSize:11,color:"#f5a623",marginTop:4}}>License #{contractorLicense}</div>}
-          </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:10,color:"#8a7a60",fontFamily:"monospace"}}>INVOICE #</div>
-            <div style={{fontSize:15,fontWeight:700,color:"#f5a623",fontFamily:"monospace"}}>{result.id}</div>
-            <div style={{fontSize:10,color:"#8a7a60",fontFamily:"monospace",marginTop:6}}>DATE</div>
-            <div style={{fontSize:12,color:"white"}}>{result.date}</div>
-            <div style={{fontSize:10,color:"#8a7a60",fontFamily:"monospace",marginTop:4}}>DUE</div>
-            <div style={{fontSize:12,color:"white"}}>Net {invoiceDue} days</div>
-          </div>
-        </div>
-        <div style={{background:"white",border:"1px solid #e0d8c8",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"28px 32px"}}>
-          {invoiceClient&&<div style={{marginBottom:20,paddingBottom:16,borderBottom:"1px solid #f0ebe0"}}>
-            <div style={{fontSize:10,color:"#8a8070",fontFamily:"monospace",letterSpacing:2,marginBottom:4}}>BILL TO</div>
-            <div style={{fontSize:14,fontWeight:600}}>{invoiceClient}</div>
-            {invoiceAddress&&<div style={{fontSize:12,color:"#6a6055"}}>{invoiceAddress}</div>}
-          </div>}
-          <table style={{width:"100%",borderCollapse:"collapse",marginBottom:20}}>
-            <thead>
-              <tr style={{borderBottom:"2px solid #1a1a2e"}}>
-                <th style={{textAlign:"left",fontSize:10,fontFamily:"monospace",letterSpacing:2,color:"#8a8070",padding:"0 0 8px",fontWeight:400}}>DESCRIPTION</th>
-                <th style={{textAlign:"center",fontSize:10,fontFamily:"monospace",letterSpacing:2,color:"#8a8070",padding:"0 0 8px",fontWeight:400}}>QTY</th>
-                <th style={{textAlign:"right",fontSize:10,fontFamily:"monospace",letterSpacing:2,color:"#8a8070",padding:"0 0 8px",fontWeight:400}}>AMOUNT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.lineItems.map((item,i)=>(
-                <tr key={i} style={{borderBottom:"1px solid #f0ebe0"}}>
-                  <td style={{padding:"10px 0",fontSize:12,color:"#1a1a1a"}}>{item.label}</td>
-                  <td style={{padding:"10px 0",fontSize:12,color:"#6a6055",textAlign:"center"}}>{item.qty||"—"}</td>
-                  <td style={{padding:"10px 0",fontSize:12,fontFamily:"monospace",textAlign:"right",color:"#1a1a2e",fontWeight:600}}>{fmtRange(item.low,item.high)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:24}}>
-            <div style={{minWidth:220}}>
-              <div style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderTop:"2px solid #1a1a2e"}}>
-                <span style={{fontSize:15,fontWeight:700}}>Total</span>
-                <span style={{fontSize:18,fontWeight:700,color:"#1a1a2e",fontFamily:"monospace"}}>
-                  {result.pricingMode==="tm"?fmt(result.tmTotal):`${fmt(result.totalLow)}–${fmt(result.totalHigh)}`}
-                </span>
-              </div>
-            </div>
-          </div>
-          {invoiceNotes&&<div style={{background:"#f8f4ec",borderRadius:8,padding:14,marginBottom:20}}>
-            <div style={{fontSize:10,color:"#8a8070",fontFamily:"monospace",letterSpacing:2,marginBottom:6}}>NOTES</div>
-            <div style={{fontSize:12,color:"#3a3030",lineHeight:1.7}}>{invoiceNotes}</div>
-          </div>}
-          <div style={{fontSize:10,color:"#aaa",textAlign:"center",lineHeight:1.8}}>
-            All work performed to NEC 2023 standards · Estimate valid 30 days<br/>
-            Thank you for your business
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:16,justifyContent:"center",flexWrap:"wrap"}}>
-          <button onClick={()=>window.print()} style={{background:"#1a1a2e",color:"white",border:"none",borderRadius:8,padding:"12px 24px",cursor:"pointer",fontSize:13}}>🖨️ Print / Save PDF</button>
-          <button onClick={()=>setShowInvoice(false)} style={{...ghostBtn,padding:"12px 20px",fontSize:13}}>← Back</button>
-        </div>
-      </div>
-      <style>{`@media print{button{display:none!important}}`}</style>
-    </div>
-  );
+  const inputStyle = { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:7, padding:"8px 11px", fontSize:13, color:"#fff", fontFamily:"inherit", width:"100%", transition:"border-color 0.15s" };
+  const focusGold = e => e.target.style.borderColor = "rgba(232,201,122,0.4)";
+  const blurGray  = e => e.target.style.borderColor = "rgba(255,255,255,0.07)";
 
-  // ── CUSTOMER VIEW ─────────────────────────────────────────────────────────
-  if (showCustomer && result) return (
-    <div style={{minHeight:"100vh",background:"#f4f1ea",fontFamily:"Georgia,serif",color:"#1a1a1a",padding:"32px 16px"}}>
-      <div style={{maxWidth:620,margin:"0 auto"}}>
-        <div style={{background:"#1a1a2e",color:"white",borderRadius:"12px 12px 0 0",padding:28}}>
-          <div style={{fontSize:10,letterSpacing:3,color:"#f5a623",fontFamily:"monospace",marginBottom:4}}>VOLT●QUOTE ESTIMATE</div>
-          <div style={{fontSize:19,fontWeight:700}}>{contractorName||"Professional Electrician"}</div>
-          {contractorPhone&&<div style={{fontSize:12,color:"#c0b89a",marginTop:3}}>📞 {contractorPhone}</div>}
-          {contractorEmail&&<div style={{fontSize:12,color:"#c0b89a"}}>✉️ {contractorEmail}</div>}
-          {contractorLicense&&<div style={{fontSize:11,color:"#f5a623",marginTop:4}}>License #{contractorLicense}</div>}
-          <div style={{fontSize:11,color:"#5a5060",marginTop:8,fontFamily:"monospace"}}>{result.date} · {result.region}</div>
-        </div>
-        <div style={{background:"white",border:"1px solid #e0d8c8",borderTop:"none",borderRadius:"0 0 12px 12px",padding:28}}>
-          {result.lineItems.filter(i=>i.qty).map((item,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #f0ebe0"}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:500}}>{item.label}</div>
-                <div style={{fontSize:11,color:"#8a8070"}}>Qty: {item.qty}</div>
-              </div>
-              <div style={{fontSize:13,fontFamily:"monospace",fontWeight:600,color:"#1a1a2e"}}>{fmtRange(item.low,item.high)}</div>
-            </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderTop:"2px solid #1a1a2e",marginTop:4}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:700}}>Total Estimate</div>
-              <div style={{fontSize:11,color:"#8a8070"}}>~{result.totalHours} labor hours</div>
-            </div>
-            <div style={{fontSize:22,fontWeight:700,color:"#1a1a2e",fontFamily:"monospace"}}>
-              {result.pricingMode==="tm"?fmt(result.tmTotal):`${fmt(result.totalLow)}–${fmt(result.totalHigh)}`}
-            </div>
-          </div>
-          {aiSummary&&<div style={{background:"#f8f4ec",borderRadius:8,padding:16,fontSize:12,lineHeight:1.8,color:"#3a3030",borderLeft:"3px solid #f5a623",marginBottom:16}}>{aiSummary}</div>}
-          <div style={{fontSize:10,color:"#aaa",textAlign:"center",lineHeight:1.8}}>Estimate valid 30 days · Final price subject to on-site inspection<br/>All work performed to NEC 2023 standards</div>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:14,justifyContent:"center",flexWrap:"wrap"}}>
-          <button onClick={()=>{setShowInvoice(true);setShowCustomer(false);}} style={{background:"#1a1a2e",color:"white",border:"none",borderRadius:8,padding:"11px 20px",cursor:"pointer",fontSize:12}}>📄 Convert to Invoice</button>
-          <button onClick={()=>setShowCustomer(false)} style={{...ghostBtn,padding:"11px 18px",fontSize:12}}>← Back</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── MAIN APP ──────────────────────────────────────────────────────────────
-  const tabBtn = (t,label) => (
-    <button onClick={()=>setActiveTab(t)} style={{
-      padding:"10px 14px",cursor:"pointer",fontSize:11,fontFamily:"monospace",
-      letterSpacing:1.5,textTransform:"uppercase",border:"none",whiteSpace:"nowrap",
-      background:activeTab===t?"rgba(245,166,35,0.15)":"transparent",
-      color:activeTab===t?"#f5a623":"#5a5555",
-      borderBottom:activeTab===t?"2px solid #f5a623":"2px solid transparent",transition:"all 0.2s"
-    }}>{label}</button>
-  );
-
+  // Render dashboard as separate return
   return (
-    <div style={{minHeight:"100vh",background:"#0a0a0f",fontFamily:"Georgia,serif",color:"#e8e0d0"}}>
-      <div style={{position:"fixed",inset:0,zIndex:0,background:"radial-gradient(ellipse at 20% 50%,#1a1a2e 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#16213e 0%,transparent 50%)",pointerEvents:"none"}}/>
-      {/* Header */}
-      <div style={{position:"relative",zIndex:1,borderBottom:"1px solid rgba(245,166,35,0.3)",padding:"18px 18px 0",background:"linear-gradient(180deg,#0d0d1a 0%,transparent 100%)"}}>
-        <div style={{maxWidth:860,margin:"0 auto"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-            <button onClick={()=>setView("landing")} style={{background:"none",border:"none",cursor:"pointer",padding:0}}>
-              <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#f5a623,#e8860a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,boxShadow:"0 0 20px rgba(245,166,35,0.45)"}}>⚡</div>
-            </button>
-            <div style={{flex:1}}>
-              <div style={{fontSize:9,letterSpacing:4,color:"#f5a623",fontFamily:"monospace",textTransform:"uppercase"}}>{T.appTagline}</div>
-              <div style={{fontSize:18,fontWeight:700,lineHeight:1}}><span style={{color:"#f5a623"}}>VOLT</span><span style={{color:"rgba(245,166,35,0.35)",margin:"0 3px",fontSize:12}}>●</span><span style={{color:"#fff",fontWeight:400}}>QUOTE</span></div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:#0a0a0c}
+        ::-webkit-scrollbar{width:3px}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+        input,textarea,select{outline:none}
+        input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.18)}
+        select option{background:#1a1a1e}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes modalIn{from{opacity:0;transform:scale(0.96) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 16px}
+        .modal-box{background:#111115;border:1px solid rgba(255,255,255,0.1);border-radius:18px;width:100%;max-width:600px;animation:modalIn 0.25s ease both;margin:auto}
+        @media print{.no-print{display:none!important}.print-quote{background:#fff!important;color:#000!important;padding:32px!important}}
+      `}</style>
+
+      <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 45% at 50% -5%,rgba(232,201,122,0.065) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", paddingBottom:80 }}>
+
+        {/* ── HEADER ── */}
+        <div style={{ borderBottom:"1px solid rgba(255,255,255,0.055)", background:"rgba(10,10,12,0.88)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }} className="no-print">
+          <div style={{ maxWidth:800, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+              {logoDataUrl
+                ? <img src={logoDataUrl} alt="logo" style={{ height:32, width:"auto", borderRadius:6, objectFit:"contain" }} />
+                : <img src="/logo192.png" alt="Wireway" style={{ height:32, width:32, borderRadius:6, objectFit:"contain" }} />
+              }
+              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.03em" }}>{company.name || "Wireway"}</span>
+              <span style={{ fontSize:8, fontWeight:700, color:"rgba(232,201,122,0.6)", background:"rgba(232,201,122,0.07)", border:"1px solid rgba(232,201,122,0.16)", padding:"1px 5px", borderRadius:3, letterSpacing:"0.08em", textTransform:"uppercase" }}>NEC 2023</span>
             </div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              {totalItems>0&&<div style={{background:"rgba(245,166,35,0.18)",border:"1px solid rgba(245,166,35,0.35)",borderRadius:20,padding:"3px 10px",fontSize:10,color:"#f5a623",fontFamily:"monospace"}}>{totalItems}</div>}
-              <button onClick={()=>setLang(lang==="en"?"es":"en")} style={{...ghostBtn,fontSize:10,padding:"5px 10px"}}>{T.langToggle}</button>
-              <button onClick={handleShare} style={{...ghostBtn,fontSize:10,padding:"5px 10px"}}>🔗 {showShare?"Copied!":"Share"}</button>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              {hasItems && (
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:600, color:"#e8c97a", letterSpacing:"-0.02em" }}>
+                  ${total.toLocaleString()}
+                </span>
+              )}
+              {onShowPricing && profile?.subscription_status !== "active" && (
+                <button onClick={onShowPricing} style={{ padding:"5px 11px", borderRadius:6, background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+                  ⚡ {onTrial && daysLeft > 0 ? `${daysLeft}d left` : "Upgrade"}
+                </button>
+              )}
+              <button onClick={newQuote} style={{ padding:"5px 11px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                + New
+              </button>
+              {/* Combined account + company menu */}
+              <div style={{ display:"flex", gap:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:7, overflow:"hidden" }}>
+                <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", border:"none", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", borderRight:"1px solid rgba(255,255,255,0.06)" }}>
+                  Account
+                </button>
+                <button onClick={() => { setCompanyDraft(company); setLogoDataUrl(company.logoDataUrl||""); setEditingCompany(true); }} style={{ padding:"5px 10px", border:"none", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  Company
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{display:"flex",overflowX:"auto",gap:0}}>
-            {tabBtn("estimator","📋 "+T.estimator)}
-            {tabBtn("sqft","📐 Sq Ft")}
-            {tabBtn("photo","📷 "+T.photo)}
-            {tabBtn("overhead","💰 "+T.overhead)}
-            {tabBtn("contractor","🪪 "+T.contractor)}
-            {tabBtn("ask","💬 "+T.ask)}
-            {tabBtn("history","🗂 "+T.history)}
-            {tabBtn("nec","📖 "+T.nec)}
           </div>
         </div>
-      </div>
 
-      <div style={{maxWidth:860,margin:"0 auto",padding:"20px 18px",position:"relative",zIndex:1}}>
+        <div style={{ maxWidth:800, margin:"0 auto", padding:"0 20px" }}>
 
-        {/* ── ESTIMATOR TAB ── */}
-        {activeTab==="estimator"&&<>
-          {photoAnalysis&&(
-            <div style={{background:"rgba(85,168,120,0.07)",border:"1px solid rgba(85,168,120,0.28)",borderRadius:10,padding:14,marginBottom:18}}>
-              <div style={{fontSize:9,letterSpacing:3,color:"#55a878",fontFamily:"monospace",marginBottom:6,textTransform:"uppercase"}}>📷 Photo Analysis</div>
-              <p style={{margin:0,fontSize:12,color:"#b0c89a",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{photoAnalysis}</p>
-              <button onClick={()=>setPhotoAnalysis("")} style={{marginTop:8,fontSize:10,color:"#4a4a4a",background:"none",border:"none",cursor:"pointer"}}>✕ Dismiss</button>
+          {/* ── SPACER (replaces hero — cleaner on daily use) ── */}
+          <div style={{ height:20 }} className="no-print" />
+
+          {/* ── STATUS BANNERS — one at a time, stacked cleanly ── */}
+          {(paymentSuccess || proGateMsg || (onTrial && daysLeft <= 30) || (!userIsPro && savedQuotes.length >= 3)) && (
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }} className="no-print">
+              {paymentSuccess && (
+                <div style={{ padding:"10px 14px", background:"rgba(100,220,130,0.07)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:12, color:"#7dcea0", fontWeight:600 }}>
+                    {paymentBanner === "pro" ? "🎉 Wireway Pro is now active." : "✓ Payment received — quote marked paid."}
+                  </span>
+                  <button onClick={() => { setPaymentSuccess(false); if(onClearBanner) onClearBanner(); }} style={{ background:"transparent", border:"none", color:"rgba(100,220,130,0.4)", fontSize:16, cursor:"pointer", padding:"0 4px" }}>✕</button>
+                </div>
+              )}
+              {proGateMsg && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,201,122,0.06)", border:"1px solid rgba(232,201,122,0.2)", borderRadius:9, fontSize:11, color:"rgba(232,201,122,0.9)", fontWeight:600 }}>
+                  ⚡ {proGateMsg}
+                </div>
+              )}
+              {onTrial && daysLeft <= 30 && daysLeft > 0 && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,201,122,0.05)", border:"1px solid rgba(232,201,122,0.15)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, color:"rgba(232,201,122,0.75)" }}>⏳ {daysLeft} day{daysLeft!==1?"s":""} remaining in your trial.</span>
+                  {onShowPricing && <button onClick={onShowPricing} style={{ padding:"4px 10px", borderRadius:5, border:"1px solid rgba(232,201,122,0.35)", background:"rgba(232,201,122,0.1)", color:"#e8c97a", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade</button>}
+                </div>
+              )}
+              {!userIsPro && savedQuotes.length >= 3 && (
+                <div style={{ padding:"9px 14px", background:"rgba(232,126,126,0.05)", border:"1px solid rgba(232,126,126,0.15)", borderRadius:9, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontSize:11, color:"rgba(232,126,126,0.75)" }}>Quote limit reached — upgrade for unlimited.</span>
+                  {onShowPricing && <button onClick={onShowPricing} style={{ padding:"4px 10px", borderRadius:5, border:"1px solid rgba(232,126,126,0.35)", background:"rgba(232,126,126,0.08)", color:"#e87e7e", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Upgrade</button>}
+                </div>
+              )}
             </div>
           )}
-          <Sec title={"01 — "+T.region}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:10}}>
-              <select value={region} onChange={e=>setRegion(e.target.value)} style={sel}>{Object.keys(REGION_MULTIPLIERS).map(r=><option key={r} value={r}>{r}</option>)}</select>
-              <div style={{background:"rgba(245,166,35,0.09)",border:"1px solid rgba(245,166,35,0.28)",borderRadius:8,padding:"8px 12px",textAlign:"center",flexShrink:0}}>
-                <div style={{fontSize:9,color:"#6a6055",fontFamily:"monospace"}}>RATE</div>
-                <div style={{fontSize:15,fontWeight:700,color:"#f5a623",fontFamily:"monospace"}}>{regionMultiplier.toFixed(2)}x</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:10, animation:"fadeUp 0.4s ease 0.04s both" }} className="no-print">
+            {[
+              { ph:"Client name",   val:clientName,  set:setClientName },
+              { ph:"Job / address", val:jobName,     set:setJobName },
+              { ph:"Email",         val:clientEmail, set:setClientEmail },
+              { ph:"Phone",         val:clientPhone, set:setClientPhone },
+            ].map(f => (
+              <input key={f.ph} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)}
+                style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
+            ))}
+          </div>
+
+          {/* ── RATE SETTINGS ── */}
+          <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.055)", borderRadius:12, padding:"12px 14px", marginBottom:10, animation:"fadeUp 0.4s ease 0.06s both" }} className="no-print">
+            <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:200 }}>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:7 }}>
+                  Hourly — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:700 }}>${hourlyRate}/hr</span>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {HOURLY_RATES.map(r => <Pill key={r} label={`$${r}`} active={r===hourlyRate} onClick={() => setHourlyRate(r)} />)}
+                </div>
+              </div>
+              <div style={{ flex:1, minWidth:150 }}>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:7 }}>
+                  Markup — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace", fontWeight:700 }}>{(markup*100).toFixed(0)}%</span>
+                </div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {MARKUP_OPTIONS.map(m => <Pill key={m.v} label={m.label} active={m.v===markup} onClick={() => setMarkup(m.v)} />)}
+                </div>
               </div>
             </div>
-            <div style={{display:"flex",gap:8}}>
-              {[[" flat",T.flatRate],["tm",T.timeAndMat]].map(([v,l])=>(
-                <button key={v} onClick={()=>setPricingMode(v.trim())} style={{flex:1,padding:"9px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"monospace",background:pricingMode===v.trim()?"rgba(245,166,35,0.13)":"rgba(255,255,255,0.02)",border:`1px solid ${pricingMode===v.trim()?"rgba(245,166,35,0.45)":"rgba(255,255,255,0.07)"}`,color:pricingMode===v.trim()?"#f5a623":"#5a5555",fontWeight:pricingMode===v.trim()?700:400}}>{l}</button>
+          </div>
+
+          {/* ── UNIFIED SETTINGS + TOOLS PANEL ── */}
+          <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.055)", borderRadius:12, padding:"12px 14px", marginBottom:12, animation:"fadeUp 0.4s ease 0.08s both" }} className="no-print">
+
+            {/* Row 1: toggles */}
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginBottom:10 }}>
+              {[
+                { label: showMaterials ? "Mat · On" : "Mat · Off",     active: showMaterials,  action: () => setShowMaterials(v=>!v),  color:"#e8c97a" },
+                { label: clientBuysAll ? "Client buys" : "You supply", active: clientBuysAll,  action: () => setClientBuysAll(v=>!v), color:"#7ec8e8" },
+                { label: flatRateMode  ? "Flat rate" : "Itemized",     active: flatRateMode,   action: () => setFlatRateMode(v=>!v),  color:"#a8e87e" },
+                { label: invoiceMode   ? "Invoice" : "Estimate",       active: invoiceMode,    action: () => setInvoiceMode(v=>!v),   color:"#b87ee8" },
+                { label: taxEnabled    ? `Tax ${(taxRate*100).toFixed(0)}%` : "Add tax", active: taxEnabled, action: () => setTaxEnabled(v=>!v), color:"#e8b87e" },
+              ].map(t => (
+                <button key={t.label} onClick={t.action} style={{ padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight:700, border: t.active ? `1px solid ${t.color}40` : "1px solid rgba(255,255,255,0.07)", background: t.active ? `${t.color}12` : "transparent", color: t.active ? t.color : "rgba(255,255,255,0.35)", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                  {t.label}
+                </button>
               ))}
             </div>
-            {pricingMode==="tm"&&(
-              <div style={{marginTop:10,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:"12px 14px"}}>
-                <div style={{fontSize:11,color:"#7a7060",marginBottom:7}}>{T.hourlyRate}: <span style={{color:"#f5a623",fontWeight:700}}>${hourlyRate}/hr</span></div>
-                <input type="range" min={50} max={200} value={hourlyRate} onChange={e=>setHourlyRate(Number(e.target.value))} style={{width:"100%",accentColor:"#f5a623"}}/>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#3a3040",fontFamily:"monospace",marginTop:3}}><span>$50</span><span>$125</span><span>$200</span></div>
-              </div>
-            )}
-          </Sec>
 
-          <Sec title={"02 — "+T.scopeTitle}>
-            {Object.entries(JOB_CATEGORIES).map(([cat,items])=>(
-              <div key={cat} style={{marginBottom:7}}>
-                <button onClick={()=>setExpandedCats(e=>({...e,[cat]:!e[cat]}))} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(245,166,35,0.15)",borderRadius:expandedCats[cat]?"8px 8px 0 0":"8px",padding:"10px 13px",cursor:"pointer",color:"#e8e0d0",fontSize:13,fontWeight:600}}>
-                  <span>{cat}</span>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    {Object.keys(items).some(k=>quantities[k]>0)&&<span style={{fontSize:9,background:"rgba(245,166,35,0.18)",color:"#f5a623",borderRadius:10,padding:"2px 7px",fontFamily:"monospace"}}>{Object.keys(items).filter(k=>quantities[k]>0).length} sel.</span>}
-                    <span style={{color:"#f5a623",fontSize:13}}>{expandedCats[cat]?"▲":"▼"}</span>
-                  </div>
-                </button>
-                {expandedCats[cat]&&(
-                  <div style={{border:"1px solid rgba(245,166,35,0.15)",borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden"}}>
-                    {Object.entries(items).map(([key,item],idx)=>(
-                      <div key={key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 13px",background:quantities[key]>0?"rgba(245,166,35,0.04)":idx%2===0?"rgba(255,255,255,0.01)":"transparent",borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,color:"#e0d8c8"}}>{item.label}</div>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:2}}>
-                            <span style={{fontSize:10,color:"#4a4848",fontFamily:"monospace"}}>${item.low}–${item.high}/{item.unit}</span>
-                            <span style={{fontSize:10,color:"#4a5448",fontFamily:"monospace"}}>~{item.hours}h</span>
-                            {item.nec&&<span style={{fontSize:9,background:"rgba(85,136,224,0.1)",color:"#7aa8f0",borderRadius:3,padding:"1px 5px",fontFamily:"monospace",cursor:"pointer"}} onClick={()=>{setActiveTab("nec");setNecSearch(item.nec);}}>§{item.nec}</span>}
-                          </div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
-                          <button onClick={()=>setQuantities(q=>({...q,[key]:Math.max(0,(q[key]||0)-1)}))} style={qBtn}>−</button>
-                          <span style={{minWidth:24,textAlign:"center",fontSize:14,fontWeight:700,color:quantities[key]>0?"#f5a623":"#2a2a3a"}}>{quantities[key]||0}</span>
-                          <button onClick={()=>setQuantities(q=>({...q,[key]:(q[key]||0)+1}))} style={qBtn}>+</button>
-                        </div>
-                      </div>
+            {/* Conditional: tax rate or invoice due */}
+            {(taxEnabled || invoiceMode) && (
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:10, paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+                {taxEnabled && (
+                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                    <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Rate:</span>
+                    {[0.05,0.06,0.07,0.08,0.09,0.10].map(r => (
+                      <button key={r} onClick={() => setTaxRate(r)} style={{ padding:"3px 7px", borderRadius:4, fontSize:10, fontWeight:700, border: r===taxRate ? "1px solid rgba(232,184,126,0.5)" : "1px solid rgba(255,255,255,0.07)", background: r===taxRate ? "rgba(232,184,126,0.15)" : "transparent", color: r===taxRate ? "#e8b87e" : "rgba(255,255,255,0.3)", cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{(r*100).toFixed(0)}%</button>
                     ))}
                   </div>
                 )}
-              </div>
-            ))}
-          </Sec>
-
-          <Sec title={"03 — "+T.conditions}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-              {Object.entries(CONDITION_ADJUSTMENTS).map(([key,cond])=>(
-                <label key={key} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:conditions[key]?"rgba(245,166,35,0.05)":"rgba(255,255,255,0.02)",border:`1px solid ${conditions[key]?"rgba(245,166,35,0.32)":"rgba(255,255,255,0.05)"}`,borderRadius:8,padding:"9px 11px",transition:"all 0.2s"}}>
-                  <input type="checkbox" checked={!!conditions[key]} onChange={e=>setConditions(c=>({...c,[key]:e.target.checked}))} style={{accentColor:"#f5a623",width:14,height:14}}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:11,color:"#e0d8c8"}}>{cond.icon} {lang==="es"?cond.labelEs:cond.label}</div>
-                    <div style={{fontSize:10,color:cond.color,fontFamily:"monospace"}}>{cond.multiplier>1?"+":""}{Math.round((cond.multiplier-1)*100)}%</div>
+                {invoiceMode && (
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Due:</span>
+                    <input type="date" value={invoiceDueDate} onChange={e => setInvoiceDueDate(e.target.value)} style={{ ...inputStyle, width:"auto", fontSize:11, padding:"3px 8px", colorScheme:"dark" }} onFocus={focusGold} onBlur={blurGray} />
+                    <button onClick={() => setInvoicePaid(v => !v)} style={{ padding:"3px 9px", borderRadius:5, border: invoicePaid ? "1px solid rgba(100,220,130,0.4)" : "1px solid rgba(255,255,255,0.07)", background: invoicePaid ? "rgba(100,220,130,0.1)" : "transparent", color: invoicePaid ? "#7dcea0" : "rgba(255,255,255,0.35)", fontSize:10, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                      {invoicePaid ? "✓ Paid" : "Mark paid"}
+                    </button>
                   </div>
-                </label>
-              ))}
-            </div>
-          </Sec>
-
-          <Sec title={"04 — "+T.pricingOpts}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-              {[{label:T.includeMat,state:includeMaterials,set:setIncludeMaterials},{label:T.includePermit,state:includePermit,set:setIncludePermit}].map(opt=>(
-                <label key={opt.label} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:opt.state?"rgba(245,166,35,0.05)":"rgba(255,255,255,0.02)",border:`1px solid ${opt.state?"rgba(245,166,35,0.28)":"rgba(255,255,255,0.05)"}`,borderRadius:8,padding:"10px 13px",transition:"all 0.2s"}}>
-                  <input type="checkbox" checked={opt.state} onChange={e=>opt.set(e.target.checked)} style={{accentColor:"#f5a623",width:14,height:14}}/>
-                  <span style={{fontSize:12,color:"#b8b09a"}}>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-            {includeMaterials&&<div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:8,padding:"12px 13px"}}>
-              <div style={{fontSize:11,color:"#7a7060",marginBottom:7}}>{T.matMarkup}: <span style={{color:"#f5a623",fontWeight:700}}>{markupPct}%</span></div>
-              <input type="range" min={0} max={50} value={markupPct} onChange={e=>setMarkupPct(Number(e.target.value))} style={{width:"100%",accentColor:"#f5a623"}}/>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#3a3040",fontFamily:"monospace",marginTop:3}}><span>0%</span><span>25%</span><span>50%</span></div>
-            </div>}
-          </Sec>
-
-          <button onClick={calculateEstimate} disabled={!hasItems} style={{width:"100%",padding:"15px",marginBottom:22,background:hasItems?"linear-gradient(135deg,#f5a623,#e8860a)":"#111120",border:"none",borderRadius:10,cursor:hasItems?"pointer":"not-allowed",fontSize:13,fontWeight:700,color:hasItems?"#0a0a0f":"#2a2a3a",letterSpacing:2,textTransform:"uppercase",fontFamily:"monospace",boxShadow:hasItems?"0 4px 28px rgba(245,166,35,0.32)":"none",transition:"all 0.3s"}}>
-            {hasItems?"⚡ "+T.generateBtn:T.selectItems}
-          </button>
-
-          {result&&(
-            <div style={{background:"rgba(245,166,35,0.025)",border:"1px solid rgba(245,166,35,0.2)",borderRadius:12,padding:20,animation:"fadeIn 0.4s ease"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:8}}>
-                <div>
-                  <div style={{fontSize:9,letterSpacing:3,color:"#f5a623",fontFamily:"monospace",textTransform:"uppercase"}}>{T.estReady}</div>
-                  <div style={{fontSize:11,color:"#5a5555"}}>{result.region} · {result.pricingMode==="tm"?T.timeAndMat:T.flatRate} · {result.date}</div>
-                </div>
-                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                  <button onClick={()=>setShowCustomer(true)} style={{background:"rgba(85,136,224,0.12)",border:"1px solid rgba(85,136,224,0.3)",borderRadius:6,padding:"7px 11px",cursor:"pointer",color:"#7aa8f0",fontSize:10,fontFamily:"monospace"}}>👤 {T.customerView}</button>
-                  <button onClick={()=>setShowInvoice(true)} style={{background:"rgba(85,168,120,0.12)",border:"1px solid rgba(85,168,120,0.3)",borderRadius:6,padding:"7px 11px",cursor:"pointer",color:"#55a878",fontSize:10,fontFamily:"monospace"}}>📄 Invoice</button>
-                  <button onClick={saveEstimate} style={{background:saved?"rgba(80,200,120,0.12)":"rgba(255,255,255,0.04)",border:`1px solid ${saved?"rgba(80,200,120,0.35)":"rgba(255,255,255,0.08)"}`,borderRadius:6,padding:"7px 11px",cursor:"pointer",color:saved?"#50c878":"#8a8070",fontSize:10,fontFamily:"monospace"}}>{saved?"✓ "+T.savedOk:T.saveEst}</button>
-                  <button onClick={copyQuote} style={{background:copied?"rgba(80,200,120,0.12)":"rgba(245,166,35,0.09)",border:`1px solid ${copied?"rgba(80,200,120,0.35)":"rgba(245,166,35,0.28)"}`,borderRadius:6,padding:"7px 11px",cursor:"pointer",color:copied?"#50c878":"#f5a623",fontSize:10,fontFamily:"monospace"}}>{copied?"✓ "+T.copied:T.copyQuote}</button>
-                </div>
+                )}
               </div>
-              {result.lineItems.map((item,i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
-                  <div>
-                    <span style={{fontSize:12,color:"#d8d0c0"}}>{item.label}</span>
-                    {item.qty&&<span style={{fontSize:10,color:"#3a3a3a",marginLeft:5,fontFamily:"monospace"}}>×{item.qty}</span>}
-                    {item.hrs>0&&<span style={{fontSize:10,color:"#3a4a3a",marginLeft:5,fontFamily:"monospace"}}>{item.hrs}h</span>}
-                    {item.nec&&<span style={{fontSize:9,background:"rgba(85,136,224,0.08)",color:"#6898e0",borderRadius:3,padding:"1px 4px",marginLeft:5,fontFamily:"monospace"}}>§{item.nec}</span>}
-                  </div>
-                  <div style={{fontSize:12,color:"#b8b09a",fontFamily:"monospace",flexShrink:0}}>{fmtRange(item.low,item.high)}</div>
-                </div>
-              ))}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderTop:"2px solid rgba(245,166,35,0.28)",marginTop:4}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{T.totalEst}</div>
-                  <div style={{fontSize:10,color:"#4a4a4a",fontFamily:"monospace"}}>~{result.totalHours} {T.laborHours}</div>
-                </div>
-                <div style={{fontSize:18,fontWeight:700,color:"#f5a623",fontFamily:"monospace"}}>
-                  {result.pricingMode==="tm"?fmt(result.tmTotal):`${fmt(result.totalLow)}–${fmt(result.totalHigh)}`}
-                </div>
-              </div>
-              <div style={{marginTop:13,padding:13,background:"rgba(0,0,0,0.22)",borderRadius:8,borderLeft:"3px solid #f5a623"}}>
-                <div style={{fontSize:9,letterSpacing:3,color:"#f5a623",fontFamily:"monospace",marginBottom:7,textTransform:"uppercase"}}>{T.profSummary}</div>
-                {loading?<div style={{color:"#3a3a3a",fontSize:12,fontStyle:"italic"}}>{T.generating}</div>
-                  :<p style={{margin:0,fontSize:12,color:"#b0a898",lineHeight:1.8}}>{aiSummary}</p>}
-              </div>
-            </div>
-          )}
-        </>}
+            )}
 
-        {/* ── SQ FT TAB ── */}
-        {activeTab==="sqft"&&(
-          <Sec title={"📐 "+T.sqftTitle}>
-            <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.7,marginBottom:20}}>{T.sqftDesc}</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {Object.entries(SQFT_PRESETS).map(([name,preset])=>(
-                <button key={name} onClick={()=>applySquareFootage(preset)} style={{background:"rgba(245,166,35,0.04)",border:"1px solid rgba(245,166,35,0.2)",borderRadius:10,padding:18,cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
-                  <div style={{fontSize:13,fontWeight:700,color:"#f5a623",marginBottom:6}}>{name}</div>
-                  <div style={{fontSize:11,color:"#5a5555",lineHeight:1.8}}>
-                    {Object.entries(preset).map(([k,v])=>`${v} ${JOB_CATEGORIES["Wiring Devices"][k]?.label||JOB_CATEGORIES["Lighting"][k]?.label||JOB_CATEGORIES["Safety Devices"][k]?.label||JOB_CATEGORIES["Panels & Service"][k]?.label||k}`).join("\n")}
-                  </div>
-                  <div style={{marginTop:10,fontSize:10,color:"#f5a623",fontFamily:"monospace",letterSpacing:1}}>→ APPLY TO ESTIMATE</div>
+            {/* Row 2: tools — subtle divider separates from toggles */}
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap", paddingTop:8, borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+              {[
+                { label:"⚡ AI Quote", action:() => setShowAIBuilder(true),  highlight: true },
+              { label:"📅 Calendar", action:() => setShowCalendar(true)   },
+              { label:"Wire Calc",  action:() => setWireCalcOpen(true)  },
+                { label:"Load Calc",  action:() => setLoadCalcOpen(true)  },
+                { label:"Checklist",  action:() => setChecklistOpen(true) },
+                { label:"Clients",    action:() => setShowClientDB(true)  },
+                { label:"+ Custom",   action:addCustomItem                },
+                hasItems ? { label:"Pull List", action:buildMaterialList } : null,
+              ].filter(Boolean).map(btn => (
+                <button key={btn.label} onClick={btn.action} style={{ padding:"4px 10px", borderRadius:6, fontSize:10, fontWeight: btn.highlight ? 700 : 600, border: btn.highlight ? "1px solid rgba(232,201,122,0.3)" : "1px solid rgba(255,255,255,0.07)", background: btn.highlight ? "rgba(232,201,122,0.08)" : "transparent", color: btn.highlight ? "#e8c97a" : "rgba(255,255,255,0.45)", cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = btn.highlight ? "rgba(232,201,122,0.15)" : "rgba(255,255,255,0.06)"; e.currentTarget.style.color = btn.highlight ? "#e8c97a" : "#fff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = btn.highlight ? "rgba(232,201,122,0.08)" : "transparent"; e.currentTarget.style.color = btn.highlight ? "#e8c97a" : "rgba(255,255,255,0.45)"; }}>
+                  {btn.label}
                 </button>
               ))}
             </div>
-          </Sec>
-        )}
+          </div>
 
-        {/* ── PHOTO TAB ── */}
-        {activeTab==="photo"&&(
-          <Sec title="📷 Photo-to-Estimate">
-            <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.7}}>Upload a photo of any room, panel, or electrical area and AI analyzes what work may be needed.</p>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{display:"none"}}/>
-            <button onClick={()=>fileRef.current?.click()} disabled={photoLoading} style={{width:"100%",padding:36,border:"2px dashed rgba(245,166,35,0.3)",borderRadius:12,background:"rgba(245,166,35,0.03)",cursor:"pointer",color:"#f5a623",fontSize:13,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",transition:"all 0.2s"}}>
-              {photoLoading?"🔍 Analyzing...":"📷 Upload Photo"}
-            </button>
-            {photoAnalysis&&(
-              <div style={{marginTop:18,background:"rgba(255,255,255,0.02)",border:"1px solid rgba(245,166,35,0.18)",borderRadius:10,padding:16}}>
-                <div style={{fontSize:9,letterSpacing:3,color:"#f5a623",fontFamily:"monospace",marginBottom:8,textTransform:"uppercase"}}>AI Analysis</div>
-                <p style={{margin:0,fontSize:12,color:"#b0a898",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{photoAnalysis}</p>
-                <button onClick={()=>setActiveTab("estimator")} style={{marginTop:12,background:"rgba(245,166,35,0.12)",border:"1px solid rgba(245,166,35,0.3)",borderRadius:8,padding:"10px 18px",cursor:"pointer",color:"#f5a623",fontSize:11,fontFamily:"monospace"}}>→ Go Build Estimate</button>
-              </div>
+          {/* Custom line items */}
+          {customItems.length > 0 && (
+            <div style={{ background:"rgba(232,201,122,0.04)", border:"1px solid rgba(232,201,122,0.12)", borderRadius:12, padding:"14px 16px", marginBottom:14 }} className="no-print">
+              <div style={{ fontSize:10, color:"rgba(232,201,122,0.6)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Custom Line Items</div>
+              {customItems.map(item => (
+                <div key={item.id} style={{ display:"grid", gridTemplateColumns:"1fr 55px 75px 75px 65px 30px", gap:5, marginBottom:7, alignItems:"center" }}>
+                  <input placeholder="Description" value={item.label} onChange={e => updateCustomItem(item.id, { label:e.target.value })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Qty" type="number" min="1" value={item.qty} onChange={e => updateCustomItem(item.id, { qty:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Mat $" type="number" min="0" value={item.materialCost||""} onChange={e => updateCustomItem(item.id, { materialCost:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Lab $" type="number" min="0" value={item.laborCost||""} onChange={e => updateCustomItem(item.id, { laborCost:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <input placeholder="Hrs" type="number" min="0" step="0.25" value={item.laborHours||""} onChange={e => updateCustomItem(item.id, { laborHours:Number(e.target.value) })} style={{ ...inputStyle, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                  <button onClick={() => removeCustomItem(item.id)} style={{ width:30, height:30, borderRadius:6, border:"1px solid rgba(255,100,100,0.2)", background:"rgba(255,100,100,0.06)", color:"rgba(255,100,100,0.5)", fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── TABS ── */}
+          <div style={{ display:"flex", background:"rgba(255,255,255,0.025)", borderRadius:9, border:"1px solid rgba(255,255,255,0.065)", overflow:"hidden", marginBottom:14, animation:"fadeUp 0.4s ease 0.16s both" }} className="no-print">
+            {TAB("services", "Services")}
+            {TAB("summary",  hasItems ? `Summary $${total.toLocaleString()}` : "Summary")}
+            {TAB("saved",    `Saved (${savedQuotes.length})`)}
+            {TAB("profit",   "Profit")}
+            {TAB("nec",      "NEC 2023")}
+            {onShowPricing && profile?.subscription_status !== "active" && (
+              <button onClick={onShowPricing} style={{ padding:"9px 10px", border:"none", background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", color:"#e8c97a", fontSize:11, fontWeight:800, cursor:"pointer", fontFamily:"'Syne',sans-serif", borderLeft:"1px solid rgba(232,201,122,0.2)", letterSpacing:"-0.01em", whiteSpace:"nowrap" }}>
+                ⚡ {onTrial ? `${daysLeft}d left` : "Upgrade"}
+              </button>
             )}
-          </Sec>
-        )}
+          </div>
 
-        {/* ── OVERHEAD TAB ── */}
-        {activeTab==="overhead"&&(
-          <div>
-            <Sec title={"💰 "+T.overheadTitle}>
-              <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.7,marginBottom:16}}>{T.overheadDesc}</p>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                {[
-                  {key:"insurance",label:"Liability Insurance /mo"},
-                  {key:"vehicle",label:"Vehicle / Gas /mo"},
-                  {key:"tools",label:"Tools / Equipment /mo"},
-                  {key:"phone",label:"Phone / Software /mo"},
-                  {key:"misc",label:"Misc Overhead /mo"},
-                ].map(f=>(
-                  <div key={f.key}>
-                    <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4,letterSpacing:1}}>{f.label.toUpperCase()}</div>
-                    <div style={{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(245,166,35,0.2)",borderRadius:8,overflow:"hidden"}}>
-                      <span style={{padding:"0 10px",color:"#f5a623",fontSize:13}}>$</span>
-                      <input type="number" value={overhead[f.key]} onChange={e=>setOverhead(o=>({...o,[f.key]:Number(e.target.value)||0}))} style={{flex:1,background:"transparent",border:"none",color:"#e8e0d0",fontSize:13,padding:"10px 10px 10px 0",outline:"none",fontFamily:"Georgia,serif"}}/>
+          {/* ════════════ SERVICES TAB ════════════ */}
+          {tab==="services" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }} className="no-print">
+              {CATEGORIES.map(cat => (
+                <CategorySection key={cat.id} category={cat} entries={entries} onUpdate={upd}
+                  hourlyRate={hourlyRate} clientBuys={clientBuysAll} showMaterials={showMaterials} />
+              ))}
+            </div>
+          )}
+
+          {/* ════════════ SUMMARY TAB ════════════ */}
+          {tab==="summary" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }}>
+              {!hasItems ? (
+                <div style={{ textAlign:"center", padding:"52px 20px 40px" }} className="no-print">
+                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.25)", marginBottom:16 }}>No services added yet</div>
+                  <button onClick={() => setTab("services")} style={{ padding:"9px 20px", background:"rgba(232,201,122,0.08)", border:"1px solid rgba(232,201,122,0.22)", borderRadius:8, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                    Browse Services →
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* ── STAT CARDS ── */}
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }} className="no-print">
+                    <StatCard label="Total Estimate"      value={`$${total.toLocaleString()}`}           color="#e8c97a" />
+                    <StatCard label="Labor Only"          value={`$${totLab.toLocaleString()}`}          color="#a8e87e" sub={`${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr`} />
+                    {showMaterials && <StatCard label="Materials (You)"    value={`$${totMat.toLocaleString()}`}          color="#7eb8e8" />}
+                    {totClientBuysMat > 0 && <StatCard label="Client Buys (est.)" value={`$${totClientBuysMat.toLocaleString()}`} color="#e87eb8" sub="not charged to you" />}
+                  </div>
+
+                  {/* ── QUOTE PREVIEW CARD ── */}
+                  <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:13, padding:"20px", marginBottom:12 }} className="print-quote">
+                    {/* Company header */}
+                    <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:16, paddingBottom:16, borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+                      {logoDataUrl
+                        ? <img src={logoDataUrl} alt="logo" style={{ height:48, width:"auto", maxWidth:120, objectFit:"contain", borderRadius:6 }} />
+                        : <img src="/logo192.png" alt="Wireway" style={{ height:48, width:48, borderRadius:8, objectFit:"contain" }} />
+                      }
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:"#fff", letterSpacing:"-0.02em" }}>{company.name || "Your Company Name"}</div>
+                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:2, lineHeight:1.6 }}>
+                          {[company.phone, company.email, company.address, company.license && `Lic: ${company.license}`].filter(Boolean).join("  ·  ")}
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        {quoteNumber && <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, fontWeight:700, color:"#e8c97a", marginBottom:3 }}>{quoteNumber}</div>}
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Date</div>
+                        <div style={{ fontSize:12, color:"rgba(255,255,255,0.6)", fontFamily:"'DM Mono',monospace" }}>{new Date().toLocaleDateString()}</div>
+                        {currentQuoteStatus?.status === "accepted" && (
+                          <div style={{ marginTop:4, fontSize:9, fontWeight:700, color:"#7dcea0", background:"rgba(100,220,130,0.1)", border:"1px solid rgba(100,220,130,0.25)", padding:"2px 6px", borderRadius:4 }}>✓ ACCEPTED</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Client info */}
+                    {(clientName || jobName || clientEmail || clientPhone) && (
+                      <div style={{ background:"rgba(255,255,255,0.03)", borderRadius:8, padding:"10px 12px", marginBottom:14, display:"grid", gridTemplateColumns:"1fr 1fr", gap:"4px 16px" }}>
+                        {clientName  && <div style={{ fontSize:12 }}><span style={{ color:"rgba(255,255,255,0.35)" }}>Client: </span><span style={{ color:"#fff", fontWeight:600 }}>{clientName}</span></div>}
+                        {jobName     && <div style={{ fontSize:12 }}><span style={{ color:"rgba(255,255,255,0.35)" }}>Job: </span><span style={{ color:"rgba(255,255,255,0.7)" }}>{jobName}</span></div>}
+                        {clientEmail && <div style={{ fontSize:12 }}><span style={{ color:"rgba(255,255,255,0.35)" }}>Email: </span><span style={{ color:"rgba(255,255,255,0.7)" }}>{clientEmail}</span></div>}
+                        {clientPhone && <div style={{ fontSize:12 }}><span style={{ color:"rgba(255,255,255,0.35)" }}>Phone: </span><span style={{ color:"rgba(255,255,255,0.7)" }}>{clientPhone}</span></div>}
+                      </div>
+                    )}
+
+                    {/* Services provided */}
+                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:10 }}>Services Provided</div>
+                    {CATEGORIES.map(cat => {
+                      const items = activeItems.filter(i => cat.services.find(s => s.id===i.id));
+                      if (!items.length) return null;
+                      return (
+                        <div key={cat.id} style={{ marginBottom:12 }}>
+                          <div style={{ fontSize:9, color:cat.color, textTransform:"uppercase", letterSpacing:"0.1em", fontWeight:700, marginBottom:5, opacity:0.85 }}>{cat.label}</div>
+                          {items.map(item => (
+                            <div key={item.id} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"6px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:12, color:"rgba(255,255,255,0.78)", fontWeight:600 }}>{item.label}</div>
+                                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace", marginTop:1 }}>
+                                  {item.variantLabel} · {item.nec} · qty {item.qty}
+                                  {item.cBuys ? <span style={{ color:"#7ec8e8", marginLeft:5 }}>· client supplies parts</span> : ""}
+                                </div>
+                              </div>
+                              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1, flexShrink:0 }}>
+                                <span style={{ fontSize:10, color:"rgba(162,220,160,0.75)", fontFamily:"'DM Mono',monospace" }}>lab ${item.lab.toLocaleString()}</span>
+                                {showMaterials && !item.cBuys && <span style={{ fontSize:9, color:"rgba(255,255,255,0.28)", fontFamily:"'DM Mono',monospace" }}>mat ${item.mat.toLocaleString()}</span>}
+                                <span style={{ fontSize:12, fontWeight:700, color:cat.color, fontFamily:"'DM Mono',monospace" }}>${item.lineTotal.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+
+                    {/* Totals */}
+                    <div style={{ background:"linear-gradient(135deg,rgba(232,201,122,0.065) 0%,rgba(255,255,255,0.018) 100%)", border:"1px solid rgba(232,201,122,0.18)", borderRadius:10, padding:"14px 16px", marginTop:8 }}>
+                      {[
+                        showMaterials && { label:"Materials (supplied by us)", val:totMat, color:"#7eb8e8" },
+                        { label:`Labor — ${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr`, val:totLab, color:"#a8e87e" },
+                        { label:`Markup — ${(markup*100).toFixed(0)}%`, val:markupAmt, color:"rgba(255,255,255,0.4)" },
+                      ].filter(Boolean).map(row => (
+                        <div key={row.label} style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", fontSize:11 }}>
+                          <span style={{ color:"rgba(255,255,255,0.38)" }}>{row.label}</span>
+                          <span style={{ fontFamily:"'DM Mono',monospace", color:row.color, fontWeight:600 }}>${row.val.toLocaleString()}</span>
+                        </div>
+                      ))}
+                      {totClientBuysMat > 0 && (
+                        <div style={{ display:"flex", justifyContent:"space-between", padding:"4px 0", fontSize:11 }}>
+                          <span style={{ color:"rgba(126,200,232,0.45)" }}>Client supplies parts (not charged)</span>
+                          <span style={{ fontFamily:"'DM Mono',monospace", color:"rgba(126,200,232,0.45)" }}>~${totClientBuysMat.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingTop:12, marginTop:6, borderTop:"1px solid rgba(232,201,122,0.18)" }}>
+                        <span style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#fff" }}>Total Estimate</span>
+                        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.03em" }}>${total.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    {notes && (
+                      <div style={{ marginTop:12, padding:"10px 12px", background:"rgba(255,255,255,0.03)", borderRadius:8, fontSize:11, color:"rgba(255,255,255,0.5)", lineHeight:1.6 }}>
+                        <span style={{ color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.08em", fontSize:9 }}>Notes: </span>{notes}
+                      </div>
+                    )}
+
+                    {/* Terms */}
+                    {company.terms && (
+                      <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(255,255,255,0.02)", borderRadius:8, fontSize:10, color:"rgba(255,255,255,0.3)", lineHeight:1.7 }}>
+                        <div style={{ color:"rgba(255,255,255,0.2)", textTransform:"uppercase", letterSpacing:"0.08em", fontSize:9, marginBottom:4 }}>Terms & Conditions</div>
+                        {company.terms}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── NOTES INPUT ── */}
+                  <textarea placeholder="Job notes, permit info, scope exclusions, warranty..." value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+                    style={{ ...inputStyle, width:"100%", marginBottom:10, resize:"vertical", lineHeight:1.6 }} className="no-print"
+                    onFocus={focusGold} onBlur={blurGray} />
+
+                  {/* ── QUOTE NUMBER + STATUS ── */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }} className="no-print">
+                    <input placeholder="Quote # (auto-generated on save)" value={quoteNumber} onChange={e => setQuoteNumber(e.target.value)}
+                      style={{ ...inputStyle, flex:1, fontSize:12 }} onFocus={focusGold} onBlur={blurGray} />
+                    {currentQuoteStatus?.status === "accepted" && (
+                      <div style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 10px", background:"rgba(100,220,130,0.1)", border:"1px solid rgba(100,220,130,0.3)", borderRadius:7, flexShrink:0 }}>
+                        <span style={{ fontSize:11 }}>✓</span>
+                        <span style={{ fontSize:10, color:"#7dcea0", fontWeight:700 }}>ACCEPTED</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── SAVE + SIGN BUTTONS ── */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }} className="no-print">
+                    <button onClick={() => { if (!userIsPro && savedQuotes.length >= 3) { if(onShowPricing) onShowPricing(); return; } saveQuote(); }} style={{ padding:"12px", background: saveMsg ? "rgba(100,220,130,0.1)" : "linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.07))", border: saveMsg ? "1px solid rgba(100,220,130,0.38)" : "1px solid rgba(232,201,122,0.35)", borderRadius:10, color: saveMsg ? "#7dcea0" : "#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+                      {saveMsg ? "✓ Saved" : "💾 Save Quote"}
+                    </button>
+                    <button onClick={() => { setSigName(""); setSigDate(new Date().toLocaleDateString()); setSigSaved(false); setSignModal(true); }}
+                      style={{ padding:"12px", background: currentQuoteStatus?.status === "accepted" ? "rgba(100,220,130,0.1)" : "rgba(255,255,255,0.04)", border: currentQuoteStatus?.status === "accepted" ? "1px solid rgba(100,220,130,0.35)" : "1px solid rgba(255,255,255,0.1)", borderRadius:10, color: currentQuoteStatus?.status === "accepted" ? "#7dcea0" : "rgba(255,255,255,0.5)", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+                      {currentQuoteStatus?.status === "accepted" ? "✓ Client Signed" : "✍ Client Signature"}
+                    </button>
+                  </div>
+
+                  {/* ── SEND ACTIONS ── */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:8 }} className="no-print">
+                    {[
+                      { icon:"✉", label:"Email",      desc: clientEmail || "Mail app",    action: emailQuote,  color:"#7eb8e8" },
+                      { icon:"💬", label:"Text",       desc: clientPhone || "Messages",    action: smsQuote,    color:"#a8e87e" },
+                      { icon:"⎘",  label:"Copy",       desc: copied ? "Copied!" : "Text", action: copyQuote,   color: copied ? "#7dcea0" : "#e8c97a" },
+                      { icon:"🔗", label:"Share Link", desc: quoteId ? "Client link" : "Save first", action: () => {
+                        if (!quoteId) { setSaveMsg("Save the quote first."); setTimeout(() => setSaveMsg(""), 2000); return; }
+                        const link = `${window.location.origin}/quote/${quoteId}`;
+                        navigator.clipboard.writeText(link);
+                        setSaveMsg("Link copied!"); setTimeout(() => setSaveMsg(""), 2500);
+                      }, color:"#b87ee8" },
+                    ].map(btn => (
+                      <button key={btn.label} onClick={btn.action} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"11px 4px", borderRadius:11, border:`1px solid ${btn.color}25`, background:`${btn.color}08`, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}
+                        onMouseEnter={e => e.currentTarget.style.background=`${btn.color}15`}
+                        onMouseLeave={e => e.currentTarget.style.background=`${btn.color}08`}>
+                        <span style={{ fontSize:16 }}>{btn.icon}</span>
+                        <span style={{ fontSize:10, fontWeight:700, color:btn.color }}>{btn.label}</span>
+                        <span style={{ fontSize:9, color:"rgba(255,255,255,0.3)" }}>{btn.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button onClick={() => window.print()} style={{ width:"100%", padding:"11px", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"rgba(255,255,255,0.5)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }} className="no-print"
+                    onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.08)"}
+                    onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.04)"}>
+                    🖨 Print / Save as PDF
+                  </button>
+
+                  {/* ── ON MY WAY + REVIEW ── */}
+                  <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:2 }} className="no-print">
+                    <OnMyWayButton
+                      clientName={clientName} clientPhone={clientPhone}
+                      jobAddress={jobName} companyName={company.name}
+                    />
+                    {currentQuoteStatus?.status === "accepted" || currentQuoteStatus?.status === "paid" ? (
+                      <ReviewRequestButton
+                        clientName={clientName} clientPhone={clientPhone}
+                        companyName={company.name} reviewUrl={company.reviewUrl}
+                      />
+                    ) : null}
+                    <AutoInvoiceButton
+                      isInvoiceMode={invoiceMode}
+                      onConvert={() => { setInvoiceMode(true); setInvoiceDueDate(new Date(Date.now()+30*86400000).toISOString().split("T")[0]); }}
+                    />
+                    <QuickBooksExport
+                      quote={{ clientName, jobName, quoteNumber, invoiceDueDate }}
+                      company={company}
+                      activeItems={activeItems}
+                      total={total} totLab={totLab} totMat={totMat}
+                      markupAmt={markupAmt} taxAmt={taxAmt}
+                      taxRate={taxRate} taxEnabled={taxEnabled}
+                    />
+                  </div>
+
+                  {/* ── PHOTO ATTACHMENTS ── */}
+                  {quoteId && (
+                    <div style={{ marginTop:14, padding:"14px 16px", background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.055)", borderRadius:12 }} className="no-print">
+                      <PhotoAttachments user={user} quoteId={quoteId} />
+                    </div>
+                  )}
+
+                  {/* ── UPGRADE PROMPT (trial / free users) ── */}
+                  {(!userIsPro || onTrial) && onShowPricing && (
+                    <div style={{ marginTop:16, background:"linear-gradient(135deg,rgba(232,201,122,0.08) 0%,rgba(99,102,241,0.06) 100%)", border:"1px solid rgba(232,201,122,0.2)", borderRadius:14, padding:"20px", textAlign:"center" }} className="no-print">
+                      <div style={{ fontSize:20, marginBottom:8 }}>⚡</div>
+                      <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:"#fff", marginBottom:6, letterSpacing:"-0.02em" }}>
+                        {onTrial ? `${daysLeft} days left in your free trial` : "Unlock Pro features"}
+                      </div>
+                      <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginBottom:16, lineHeight:1.6 }}>
+                        Client payments · Unlimited quotes · Signatures · Invoice mode · Profit analysis · and more
+                      </div>
+                      <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
+                        <button onClick={onShowPricing} style={{ padding:"11px 24px", background:"linear-gradient(135deg,rgba(232,201,122,0.25),rgba(232,201,122,0.1))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:9, color:"#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          Upgrade to Pro — $12/mo
+                        </button>
+                        <button onClick={onShowPricing} style={{ padding:"11px 20px", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:9, color:"rgba(255,255,255,0.4)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                          View all plans
+                        </button>
+                      </div>
+                      <div style={{ fontSize:10, color:"rgba(255,255,255,0.2)", marginTop:10 }}>
+                        30-day free trial · No credit card required · Cancel anytime
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── STRIPE PAYMENT PANEL ── */}
+                  <div style={{ marginTop:14, background:"linear-gradient(135deg,rgba(99,102,241,0.08) 0%,rgba(139,92,246,0.05) 100%)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:13, padding:"18px 18px 14px" }} className="no-print">
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14 }}>
+                      <div style={{ width:28, height:28, borderRadius:6, background:"rgba(99,102,241,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>⚡</div>
+                      <div>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:"#fff" }}>Request Payment via Stripe</div>
+                        <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Client pays online — card or bank · 2.9% + 30¢ per transaction</div>
+                      </div>
+                    </div>
+
+                    {/* Deposit vs full toggle */}
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      <button onClick={() => setDepositOnly(true)} style={{ flex:1, padding:"8px", borderRadius:8, border: depositOnly ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositOnly ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.03)", color: depositOnly ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                        Deposit Only
+                      </button>
+                      <button onClick={() => setDepositOnly(false)} style={{ flex:1, padding:"8px", borderRadius:8, border: !depositOnly ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: !depositOnly ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.03)", color: !depositOnly ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                        Full Amount
+                      </button>
+                    </div>
+
+                    {/* Deposit percentage selector */}
+                    {depositOnly && (
+                      <div style={{ display:"flex", gap:5, marginBottom:12 }}>
+                        <span style={{ fontSize:10, color:"rgba(255,255,255,0.35)", alignSelf:"center", flexShrink:0 }}>Deposit %:</span>
+                        {[25, 33, 50, 75].map(pct => (
+                          <button key={pct} onClick={() => setDepositPercent(pct)} style={{ flex:1, padding:"6px", borderRadius:6, border: depositPercent===pct ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositPercent===pct ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: depositPercent===pct ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{pct}%</button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Amount preview */}
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", background:"rgba(255,255,255,0.04)", borderRadius:8, marginBottom:12 }}>
+                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>
+                        {depositOnly ? `${depositPercent}% deposit` : "Full payment"} to charge:
+                      </span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:700, color:"#818cf8" }}>
+                        ${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Error message */}
+                    {paymentError && (
+                      <div style={{ fontSize:11, color:"#e87e7e", background:"rgba(232,126,126,0.08)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10, lineHeight:1.5 }}>
+                        ⚠ {paymentError}
+                      </div>
+                    )}
+
+                    {/* Success message */}
+                    {paymentSuccess && (
+                      <div style={{ fontSize:11, color:"#7dcea0", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10 }}>
+                        ✓ Payment received! Quote marked as paid.
+                      </div>
+                    )}
+
+                    {/* Pay button */}
+                    {!company.stripeKey ? (
+                      <button onClick={() => setEditingCompany(true)} style={{ width:"100%", padding:"13px", background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, color:"#818cf8", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        ⚙ Connect Stripe in Company Settings
+                      </button>
+                    ) : (
+                      <button onClick={() => requirePro(requestPayment)} disabled={paymentLoading} style={{ width:"100%", padding:"13px", background: paymentLoading ? "rgba(99,102,241,0.06)" : "linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15))", border:"1px solid rgba(99,102,241,0.4)", borderRadius:10, color: paymentLoading ? "rgba(129,140,248,0.5)" : "#818cf8", fontSize:13, fontWeight:700, cursor: paymentLoading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+                        {paymentLoading ? "Opening Stripe Checkout..." : `⚡ Send Payment Request — $${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}`}
+                      </button>
+                    )}
+
+                    <div style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:8 }}>
+                      Powered by Stripe · Secure · PCI compliant · Client pays in their browser
                     </div>
                   </div>
-                ))}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-                <div>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4,letterSpacing:1}}>BILLABLE HOURS / MONTH</div>
-                  <input type="number" value={targetHours} onChange={e=>setTargetHours(Number(e.target.value)||1)} style={{...sel,fontSize:13}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4,letterSpacing:1}}>DESIRED PROFIT MARGIN %</div>
-                  <input type="number" value={desiredProfit} onChange={e=>setDesiredProfit(Number(e.target.value)||0)} style={{...sel,fontSize:13}}/>
-                </div>
-              </div>
-              <div style={{background:"rgba(245,166,35,0.07)",border:"1px solid rgba(245,166,35,0.3)",borderRadius:12,padding:22}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,textAlign:"center"}}>
-                  <div>
-                    <div style={{fontSize:10,color:"#8a8070",fontFamily:"monospace",letterSpacing:1,marginBottom:6}}>MONTHLY OVERHEAD</div>
-                    <div style={{fontSize:22,fontWeight:700,color:"#e05555",fontFamily:"monospace"}}>{fmt(totalOverhead)}</div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:10,color:"#8a8070",fontFamily:"monospace",letterSpacing:1,marginBottom:6}}>BREAK-EVEN RATE</div>
-                    <div style={{fontSize:22,fontWeight:700,color:"#e08a55",fontFamily:"monospace"}}>${Math.ceil(totalOverhead/targetHours)}/hr</div>
-                  </div>
-                  <div>
-                    <div style={{fontSize:10,color:"#8a8070",fontFamily:"monospace",letterSpacing:1,marginBottom:6}}>YOUR TRUE RATE</div>
-                    <div style={{fontSize:22,fontWeight:700,color:"#f5a623",fontFamily:"monospace"}}>${trueHourlyRate}/hr</div>
-                  </div>
-                </div>
-                <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid rgba(245,166,35,0.2)",fontSize:12,color:"#8a8070",textAlign:"center",lineHeight:1.7}}>
-                  Your true hourly rate includes overhead recovery + {desiredProfit}% profit margin.<br/>
-                  <span style={{color:"#f5a623"}}>Use ${trueHourlyRate}/hr</span> in your Time & Material estimates to actually profit.
-                </div>
-                <div style={{marginTop:12,textAlign:"center"}}>
-                  <button onClick={()=>{setHourlyRate(trueHourlyRate);setPricingMode("tm");setActiveTab("estimator");}} style={{background:"rgba(245,166,35,0.15)",border:"1px solid rgba(245,166,35,0.35)",borderRadius:8,padding:"10px 20px",cursor:"pointer",color:"#f5a623",fontSize:12,fontFamily:"monospace"}}>→ Apply to T&M Estimator</button>
-                </div>
-              </div>
-            </Sec>
-          </div>
-        )}
+                </>
+              )}
+            </div>
+          )}
 
-        {/* ── CONTRACTOR TAB ── */}
-        {activeTab==="contractor"&&(
-          <Sec title={"🪪 "+T.contractor}>
-            <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.7}}>Your info appears on customer quotes and invoices.</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {/* ════════════ SAVED QUOTES TAB ════════════ */}
+          {tab==="saved" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }} className="no-print">
+              {/* Free tier limit warning */}
+              {!userIsPro && savedQuotes.length >= 3 && onShowPricing && (
+                <div style={{ marginBottom:14, padding:"14px 16px", background:"linear-gradient(135deg,rgba(232,201,122,0.08),rgba(99,102,241,0.05))", border:"1px solid rgba(232,201,122,0.2)", borderRadius:12, display:"flex", justifyContent:"space-between", alignItems:"center", gap:12 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#e8c97a", marginBottom:2 }}>Free plan limit reached</div>
+                    <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>You're using {savedQuotes.length}/3 saved quote slots. Upgrade for unlimited.</div>
+                  </div>
+                  <button onClick={onShowPricing} style={{ padding:"8px 14px", borderRadius:8, border:"1px solid rgba(232,201,122,0.4)", background:"rgba(232,201,122,0.12)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    Upgrade ⚡
+                  </button>
+                </div>
+              )}
+              {savedQuotes.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"48px 20px", color:"rgba(255,255,255,0.2)" }}>
+                  <div style={{ fontSize:30, marginBottom:10 }}>◎</div>
+                  <div style={{ fontSize:13 }}>No saved quotes yet.</div>
+                  <div style={{ fontSize:11, marginTop:6, color:"rgba(255,255,255,0.15)" }}>Build an estimate and tap Save Quote.</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>
+                    {savedQuotes.length} saved quote{savedQuotes.length !== 1 ? "s" : ""}
+                  </div>
+                  {savedQuotes.map(q => (
+                    <div key={q.id} style={{
+                      background: q.status === "accepted" ? "linear-gradient(135deg,rgba(100,220,130,0.06),rgba(255,255,255,0.02))" : "rgba(255,255,255,0.022)",
+                      border: q.status === "accepted" ? "1px solid rgba(100,220,130,0.2)" : "1px solid rgba(255,255,255,0.065)",
+                      borderRadius:13, padding:"14px 16px", marginBottom:8,
+                      display:"flex", alignItems:"center", gap:12,
+                    }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, fontWeight:700, color:"#e8c97a" }}>{q.quoteNumber}</span>
+                          {q.status === "accepted" && (
+                            <span style={{ fontSize:9, fontWeight:700, color:"#7dcea0", background:"rgba(100,220,130,0.12)", border:"1px solid rgba(100,220,130,0.25)", padding:"1px 6px", borderRadius:4, letterSpacing:"0.05em" }}>
+                              ✓ ACCEPTED
+                            </span>
+                          )}
+                          {q.status === "draft" && (
+                            <span style={{ fontSize:9, color:"rgba(255,255,255,0.25)", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", padding:"1px 6px", borderRadius:4, letterSpacing:"0.05em" }}>
+                              DRAFT
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize:13, fontWeight:600, color:"#fff", marginBottom:2 }}>
+                          {q.clientName || "No client name"}{q.jobName ? ` — ${q.jobName}` : ""}
+                        </div>
+                        <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace" }}>
+                          ${q.total?.toLocaleString()} · {new Date(q.savedAt).toLocaleDateString()}
+                          {q.sigName && <span style={{ color:"rgba(100,220,130,0.6)", marginLeft:8 }}>· Signed: {q.sigName}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                        <button onClick={() => loadQuote(q)} style={{ padding:"7px 14px", borderRadius:7, border:"1px solid rgba(232,201,122,0.3)", background:"rgba(232,201,122,0.08)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          Load →
+                        </button>
+                        <button onClick={() => deleteQuote(q.id)} style={{ padding:"7px 10px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,100,100,0.5)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ════════════ PROFIT ANALYSIS TAB ════════════ */}
+          {tab==="profit" && (
+            <div style={{ animation:"fadeUp 0.3s ease both" }} className="no-print">
+              {!hasItems ? (
+                <div style={{ textAlign:"center", padding:"40px 20px", color:"rgba(255,255,255,0.2)" }}>
+                  <div style={{ fontSize:28, marginBottom:10 }}>◎</div>
+                  <div style={{ fontSize:13 }}>Add services to see profit analysis.</div>
+                </div>
+              ) : (
+                <>
+                  {/* Key metrics */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
+                    {[
+                      { label:"Total Revenue",     val:`$${total.toLocaleString()}`,         color:"#e8c97a", sub:"what client pays" },
+                      { label:"Your Labor",         val:`$${totLab.toLocaleString()}`,         color:"#a8e87e", sub:`${totHrs.toFixed(1)} hrs @ $${hourlyRate}/hr` },
+                      { label:"Materials Cost",     val:`$${totMat.toLocaleString()}`,         color:"#7eb8e8", sub:"your out-of-pocket" },
+                      { label:"Gross Profit",       val:`$${markupAmt.toLocaleString()}`,      color:"#e8c97a", sub:`${marginPct}% margin` },
+                      { label:"Effective Rate",     val:`$${effectiveRate}/hr`,                color:"#a8e87e", sub:"revenue per hour" },
+                      { label:"Labor %",            val:`${laborPct}%`,                        color:"#7eb8e8", sub:"of total invoice" },
+                    ].map(c => (
+                      <div key={c.label} style={{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"12px 14px" }}>
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>{c.label}</div>
+                        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:500, color:c.color }}>{c.val}</div>
+                        <div style={{ fontSize:9, color:"rgba(255,255,255,0.25)", marginTop:2 }}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Profitability grade */}
+                  <div style={{ background: Number(marginPct) >= 30 ? "rgba(100,220,130,0.06)" : Number(marginPct) >= 20 ? "rgba(232,201,122,0.06)" : "rgba(232,120,120,0.06)", border: `1px solid ${Number(marginPct) >= 30 ? "rgba(100,220,130,0.2)" : Number(marginPct) >= 20 ? "rgba(232,201,122,0.2)" : "rgba(232,120,120,0.2)"}`, borderRadius:12, padding:"16px 18px", marginBottom:14 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#fff" }}>
+                          {Number(marginPct) >= 30 ? "✓ Strong margin" : Number(marginPct) >= 20 ? "⚡ Fair margin" : "⚠ Thin margin"}
+                        </div>
+                        <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginTop:3 }}>
+                          {Number(marginPct) >= 30 ? "Industry benchmark: 25–35% is healthy for residential electrical." : Number(marginPct) >= 20 ? "Consider raising markup or hourly rate to improve margins." : "Increase markup or hourly rate — you may be underpriced."}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:700, color: Number(marginPct) >= 30 ? "#7dcea0" : Number(marginPct) >= 20 ? "#e8c97a" : "#e87e7e" }}>
+                        {marginPct}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Per-service profitability breakdown */}
+                  <div style={{ background:"rgba(255,255,255,0.022)", border:"1px solid rgba(255,255,255,0.065)", borderRadius:12, padding:"14px 16px" }}>
+                    <div style={{ fontSize:9, color:"rgba(255,255,255,0.28)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:12 }}>Service Breakdown</div>
+                    {activeItems.map(item => {
+                      const itemMarkup = (item.lineTotal * markup);
+                      const itemRevenue = item.lineTotal + itemMarkup;
+                      const itemMargin = itemRevenue > 0 ? ((itemMarkup / itemRevenue) * 100).toFixed(0) : 0;
+                      return (
+                        <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, color:"rgba(255,255,255,0.7)", fontWeight:600, lineHeight:1.2 }}>{item.label}</div>
+                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace", marginTop:1 }}>
+                              {item.hrs.toFixed(1)} hrs · lab ${item.lab.toLocaleString()} · mat ${item.mat.toLocaleString()}
+                            </div>
+                          </div>
+                          <div style={{ textAlign:"right", flexShrink:0 }}>
+                            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:700, color:"#e8c97a" }}>${itemRevenue.toLocaleString()}</div>
+                            <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", fontFamily:"'DM Mono',monospace" }}>{itemMargin}% margin</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ════════════ AI QUOTE BUILDER ════════════ */}
+          {showAIBuilder && (
+            <AIQuoteBuilder
+              onApplyEstimate={applyAIEstimate}
+              onClose={() => setShowAIBuilder(false)}
+            />
+          )}
+
+          {/* ════════════ CALENDAR VIEW ════════════ */}
+          {showCalendar && (
+            <div style={{ position:"fixed", inset:0, zIndex:150, overflowY:"auto" }}>
+              <JobCalendar user={user} onClose={() => setShowCalendar(false)} />
+            </div>
+          )}
+
+          {/* ════════════ NEC REFERENCE TAB ════════════ */}
+          {tab === "nec" && <NECReference />}
+
+          <div style={{ textAlign:"center", marginTop:44, paddingTop:18, borderTop:"1px solid rgba(255,255,255,0.04)", fontSize:9, color:"rgba(255,255,255,0.13)", letterSpacing:"0.07em" }} className="no-print">
+            WIREWAY · NEC 2023 · wireway.cc
+          </div>
+        </div>
+      </div>
+
+      {/* ════════════ ACCOUNT MODAL ════════════ */}
+      {showAccount && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setShowAccount(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Account</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>{user?.email}</div>
+              </div>
+              <button onClick={() => setShowAccount(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+
+            {/* Plan status */}
+            <div style={{ background: userIsPro ? "rgba(100,220,130,0.06)" : "rgba(232,201,122,0.06)", border: userIsPro ? "1px solid rgba(100,220,130,0.2)" : "1px solid rgba(232,201,122,0.2)", borderRadius:10, padding:"12px 14px", marginBottom:16 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color: userIsPro ? "#7dcea0" : "#e8c97a" }}>
+                    {userIsPro ? (onTrial ? `Pro Trial — ${daysLeft} days left` : "Wireway Pro") : "Free Plan"}
+                  </div>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginTop:2 }}>
+                    {userIsPro ? "All features unlocked" : "3 quote limit · upgrade to unlock everything"}
+                  </div>
+                </div>
+                {!userIsPro && onShowPricing && (
+                  <button onClick={() => { setShowAccount(false); onShowPricing(); }} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(232,201,122,0.4)", background:"rgba(232,201,122,0.1)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                    Upgrade ⚡
+                  </button>
+                )}
+                {userIsPro && (
+                  <button onClick={async () => {
+                    const res = await fetch("/api/billing-portal", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ userId: user.id }) });
+                    const d = await res.json(); if (d.url) window.open(d.url, "_blank");
+                  }} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                    Manage Billing
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
               {[
-                {label:"Company / Name",val:contractorName,set:setContractorName,ph:"Smith Electric LLC"},
-                {label:"Phone",val:contractorPhone,set:setContractorPhone,ph:"(607) 555-0100"},
-                {label:"Email",val:contractorEmail,set:setContractorEmail,ph:"you@email.com"},
-                {label:"License #",val:contractorLicense,set:setContractorLicense,ph:"ME-12345"},
-                {label:"City",val:contractorCity,set:setContractorCity,ph:"Binghamton"},
-              ].map(f=>(
+                { label:"Quotes saved", val: savedQuotes.length },
+                { label:"Clients", val: clients.length },
+                { label:"Accepted", val: savedQuotes.filter(q=>q.status==="accepted"||q.status==="paid").length },
+              ].map(s => (
+                <div key={s.label} style={{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:8, padding:"10px", textAlign:"center" }}>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:700, color:"#e8c97a" }}>{s.val}</div>
+                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", marginTop:2 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sign out */}
+            <button onClick={async () => {
+              await signOut();
+              window.location.reload();
+            }} style={{ width:"100%", padding:"12px", background:"rgba(232,126,126,0.06)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:10, color:"#e87e7e", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ COMPANY PROFILE MODAL ════════════ */}
+      {signModal && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setSignModal(false)}>
+          <div className="modal-box" style={{ padding:"28px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:17, fontWeight:800, color:"#fff" }}>Client Acceptance</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)", marginTop:3 }}>
+                  Quote {quoteNumber || "—"} · Total ${total.toLocaleString()}
+                </div>
+              </div>
+              <button onClick={() => setSignModal(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+
+            {/* Quote summary for reference */}
+            <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"12px 14px", marginBottom:20 }}>
+              <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", marginBottom:8 }}>Scope Summary</div>
+              {activeItems.slice(0, 5).map(i => (
+                <div key={i.id} style={{ fontSize:11, color:"rgba(255,255,255,0.6)", padding:"3px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                  {i.label} ({i.variantLabel}) × {i.qty} — <span style={{ color:"#e8c97a", fontFamily:"'DM Mono',monospace" }}>${i.lineTotal.toLocaleString()}</span>
+                </div>
+              ))}
+              {activeItems.length > 5 && <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", paddingTop:6 }}>+ {activeItems.length - 5} more services</div>}
+              <div style={{ display:"flex", justifyContent:"space-between", paddingTop:10, marginTop:6, borderTop:"1px solid rgba(232,201,122,0.15)" }}>
+                <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Total</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:600, color:"#e8c97a" }}>${total.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Acceptance statement */}
+            <div style={{ fontSize:11, color:"rgba(255,255,255,0.45)", lineHeight:1.7, marginBottom:20, padding:"12px 14px", background:"rgba(232,201,122,0.04)", borderRadius:8, border:"1px solid rgba(232,201,122,0.12)" }}>
+              By entering your name and date below, you acknowledge that you have reviewed this estimate, agree to the scope of work and pricing, and authorize {company.name || "the electrician"} to proceed.
+              {company.terms && <div style={{ marginTop:8, color:"rgba(255,255,255,0.3)", fontSize:10 }}>{company.terms}</div>}
+            </div>
+
+            {/* Signature fields */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:16 }}>
+              <div>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Client Full Name</div>
+                <input placeholder="Type full name to accept" value={sigName} onChange={e => setSigName(e.target.value)}
+                  style={{ ...inputStyle }} onFocus={focusGold} onBlur={blurGray} />
+              </div>
+              <div>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Date</div>
+                <input type="date" value={sigDate} onChange={e => setSigDate(e.target.value)}
+                  style={{ ...inputStyle, colorScheme:"dark" }} onFocus={focusGold} onBlur={blurGray} />
+              </div>
+            </div>
+
+            {/* Accept button */}
+            {sigSaved ? (
+              <div style={{ textAlign:"center", padding:"14px", background:"rgba(100,220,130,0.1)", border:"1px solid rgba(100,220,130,0.3)", borderRadius:10, color:"#7dcea0", fontSize:14, fontWeight:700 }}>
+                ✓ Quote Accepted — {sigName}
+              </div>
+            ) : (
+              <button onClick={acceptQuote} disabled={!sigName}
+                style={{ width:"100%", padding:"14px", background: sigName ? "linear-gradient(135deg,rgba(100,220,130,0.2),rgba(100,220,130,0.08))" : "rgba(255,255,255,0.04)", border: sigName ? "1px solid rgba(100,220,130,0.4)" : "1px solid rgba(255,255,255,0.08)", borderRadius:11, color: sigName ? "#7dcea0" : "rgba(255,255,255,0.25)", fontSize:13, fontWeight:700, cursor: sigName ? "pointer" : "default", fontFamily:"inherit", transition:"all 0.2s" }}>
+                ✍ Accept & Sign Quote
+              </button>
+            )}
+
+            <div style={{ textAlign:"center", marginTop:10, fontSize:10, color:"rgba(255,255,255,0.2)" }}>
+              This is an electronic acknowledgment. Save or print a copy for your records.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ WIRE SIZE CALCULATOR MODAL ════════════ */}
+      {wireCalcOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setWireCalcOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Wire Size Calculator</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>NEC Table 310.15(B)(16) · 60°C column</div>
+              </div>
+              <button onClick={() => setWireCalcOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+              {[
+                { label:"Load (amps)", val:wireAmps, set:setWireAmps, ph:"e.g. 20", type:"number" },
+                { label:"One-way run (ft)", val:wireLen, set:setWireLen, ph:"e.g. 75", type:"number" },
+              ].map(f => (
                 <div key={f.label}>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4,letterSpacing:1}}>{f.label.toUpperCase()}</div>
-                  <input value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{...sel,fontSize:12}}/>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>{f.label}</div>
+                  <input type={f.type} placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
                 </div>
               ))}
               <div>
-                <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4,letterSpacing:1}}>STATE</div>
-                <select value={contractorState} onChange={e=>setContractorState(e.target.value)} style={sel}>{US_STATES.map(s=><option key={s} value={s}>{s}</option>)}</select>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>Voltage</div>
+                <div style={{ display:"flex", gap:5 }}>
+                  {["120","240"].map(v => <button key={v} onClick={() => setWireVolt(v)} style={{ flex:1, padding:"8px", borderRadius:6, border: wireVolt===v ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)", background: wireVolt===v ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: wireVolt===v ? "#e8c97a" : "rgba(255,255,255,0.4)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{v}V</button>)}
+                </div>
               </div>
-            </div>
-            <div style={{marginTop:20}}>
-              <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:10,letterSpacing:1}}>INVOICE DEFAULTS</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4}}>DEFAULT CLIENT NAME</div>
-                  <input value={invoiceClient} onChange={e=>setInvoiceClient(e.target.value)} placeholder="Customer name" style={{...sel,fontSize:12}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4}}>PAYMENT TERMS (DAYS)</div>
-                  <select value={invoiceDue} onChange={e=>setInvoiceDue(Number(e.target.value))} style={sel}>{[15,30,45,60].map(d=><option key={d} value={d}>Net {d}</option>)}</select>
-                </div>
-                <div style={{gridColumn:"1/-1"}}>
-                  <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace",marginBottom:4}}>INVOICE NOTES / TERMS</div>
-                  <textarea value={invoiceNotes} onChange={e=>setInvoiceNotes(e.target.value)} placeholder="e.g. 50% deposit required. Balance due on completion." style={{...sel,height:70,resize:"vertical",lineHeight:1.6}}/>
+              <div>
+                <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>Conductor</div>
+                <div style={{ display:"flex", gap:5 }}>
+                  {["copper","aluminum"].map(m => <button key={m} onClick={() => setWireMat(m)} style={{ flex:1, padding:"8px", borderRadius:6, border: wireMat===m ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)", background: wireMat===m ? "rgba(232,201,122,0.1)" : "rgba(255,255,255,0.03)", color: wireMat===m ? "#e8c97a" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{m[0].toUpperCase()+m.slice(1)}</button>)}
                 </div>
               </div>
             </div>
-            {contractorName&&(
-              <div style={{marginTop:20,background:"rgba(245,166,35,0.05)",border:"1px solid rgba(245,166,35,0.22)",borderRadius:10,padding:16}}>
-                <div style={{fontSize:9,color:"#f5a623",fontFamily:"monospace",letterSpacing:2,marginBottom:8,textTransform:"uppercase"}}>Preview</div>
-                <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{contractorName}</div>
-                {contractorPhone&&<div style={{fontSize:12,color:"#b8b09a"}}>📞 {contractorPhone}</div>}
-                {contractorEmail&&<div style={{fontSize:12,color:"#b8b09a"}}>✉️ {contractorEmail}</div>}
-                {contractorLicense&&<div style={{fontSize:11,color:"#f5a623"}}>License #{contractorLicense}</div>}
-                {(contractorCity||contractorState)&&<div style={{fontSize:11,color:"#6a6055"}}>{[contractorCity,contractorState].filter(Boolean).join(", ")}</div>}
+            {wireResult && (
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12 }}>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:700, color:"#e8c97a" }}># {wireResult.awg}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>AWG minimum</div>
+                  </div>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:600, color:"#a8e87e" }}>{wireResult.ampacity}A</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>ampacity</div>
+                  </div>
+                  <div style={{ textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:600, color: wireResult.vDropOk ? "#a8e87e" : "#e87e7e" }}>
+                      {wireLen ? `${wireResult.vDropPct}%` : "—"}
+                    </div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>voltage drop</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)", lineHeight:1.7, borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:10 }}>
+                  <span style={{ color:"rgba(232,201,122,0.7)", fontFamily:"'DM Mono',monospace" }}>{wireResult.nec}</span> — continuous load ({wireResult.continuous}A at 125%) requires #{wireResult.awg} AWG {wireMat}.
+                  {wireLen && !wireResult.vDropOk && <span style={{ color:"#e87e7e" }}> ⚠ Voltage drop exceeds 3% — consider upsizing one AWG.</span>}
+                  {wireLen && wireResult.vDropOk && <span style={{ color:"#a8e87e" }}> ✓ Voltage drop within 3% limit.</span>}
+                </div>
               </div>
             )}
-          </Sec>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* ── ASK AI TAB ── */}
-        {activeTab==="ask"&&(
-          <Sec title="💬 Ask the AI Electrician">
-            <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.7}}>Ask code questions, pricing, scope clarification — anything. Context-aware if you have an active estimate.</p>
-            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,padding:14,minHeight:260,maxHeight:380,overflowY:"auto",marginBottom:10}}>
-              {aiChat.length===0&&<div style={{color:"#2a2535",fontSize:12,fontFamily:"monospace",textAlign:"center",marginTop:50}}>e.g. "Do I need AFCI in the kitchen?" or "What gauge wire for a dryer?"</div>}
-              {aiChat.map((m,i)=>(
-                <div key={i} style={{marginBottom:12,display:"flex",gap:8,justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-                  {m.role==="assistant"&&<div style={{width:22,height:22,borderRadius:"50%",background:"linear-gradient(135deg,#f5a623,#e8860a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>⚡</div>}
-                  <div style={{maxWidth:"82%",background:m.role==="user"?"rgba(245,166,35,0.1)":"rgba(255,255,255,0.03)",border:`1px solid ${m.role==="user"?"rgba(245,166,35,0.22)":"rgba(255,255,255,0.06)"}`,borderRadius:9,padding:"9px 13px",fontSize:12,color:m.role==="user"?"#e8c878":"#b0a898",lineHeight:1.7}}>{m.content}</div>
+      {/* ════════════ LOAD CALCULATOR MODAL ════════════ */}
+      {loadCalcOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setLoadCalcOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Load Calculator</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>NEC 220.82 Optional Method — dwelling units</div>
+              </div>
+              <button onClick={() => setLoadCalcOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+              {[
+                { label:"Sq footage", val:sqft, set:setSqft, ph:"e.g. 2400" },
+                { label:"Small appl. circuits", val:smallAppl, set:setSmallAppl, ph:"2 (min)" },
+                { label:"Laundry circuits", val:laundry, set:setLaundry, ph:"1 (min)" },
+                { label:"Electric dryers", val:dryer, set:setDryer, ph:"0" },
+                { label:"Electric ranges", val:range, set:setRange, ph:"0" },
+                { label:"AC (tons)", val:acTons, set:setAcTons, ph:"0" },
+                { label:"Heat (kW)", val:heatKw, set:setHeatKw, ph:"0" },
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", marginBottom:5 }}>{f.label}</div>
+                  <input type="number" min="0" placeholder={f.ph} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
                 </div>
               ))}
-              {chatLoading&&<div style={{color:"#3a3535",fontSize:12,fontStyle:"italic",fontFamily:"monospace"}}>⚡ Thinking...</div>}
             </div>
-            <div style={{display:"flex",gap:8}}>
-              <input value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendChat()} placeholder="Ask anything..." style={{...sel,flex:1,fontSize:12}}/>
-              <button onClick={sendChat} disabled={!chatInput.trim()||chatLoading} style={{background:chatInput.trim()?"linear-gradient(135deg,#f5a623,#e8860a)":"#111120",border:"none",borderRadius:8,padding:"0 16px",cursor:chatInput.trim()?"pointer":"not-allowed",color:chatInput.trim()?"#0a0a0f":"#2a2a3a",fontSize:12,fontFamily:"monospace",fontWeight:700,flexShrink:0}}>Send</button>
-            </div>
-          </Sec>
-        )}
-
-        {/* ── HISTORY TAB ── */}
-        {activeTab==="history"&&(
-          <Sec title={"🗂 "+T.historyTitle}>
-            {savedEstimates.length===0
-              ?<div style={{textAlign:"center",color:"#3a3040",fontFamily:"monospace",fontSize:12,padding:40}}>{T.historyEmpty}</div>
-              :savedEstimates.map(est=>(
-                <div key={est.id} style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(245,166,35,0.15)",borderRadius:10,padding:16,marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:600,color:"#e8e0d0"}}>{est.clientName||est.region}</div>
-                      <div style={{fontSize:10,color:"#5a5555",fontFamily:"monospace"}}>{est.date} · {est.region}</div>
-                    </div>
-                    <div style={{fontSize:14,fontWeight:700,color:"#f5a623",fontFamily:"monospace"}}>{est.pricingMode==="tm"?fmt(est.tmTotal):`${fmt(est.totalLow)}–${fmt(est.totalHigh)}`}</div>
+            {loadResult && (
+              <div style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:12, padding:"16px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12, textAlign:"center" }}>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color:"#e8c97a" }}>{loadResult.amps240}A</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>calculated load @240V</div>
                   </div>
-                  <div style={{fontSize:11,color:"#4a4a4a",marginBottom:10}}>{est.lineItems.filter(i=>i.qty).map(i=>`${i.label} ×${i.qty}`).join(" · ")}</div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>loadEstimate(est)} style={{background:"rgba(245,166,35,0.1)",border:"1px solid rgba(245,166,35,0.28)",borderRadius:6,padding:"6px 12px",cursor:"pointer",color:"#f5a623",fontSize:10,fontFamily:"monospace"}}>Load</button>
-                    <button onClick={()=>deleteEstimate(est.id)} style={{background:"rgba(224,85,85,0.08)",border:"1px solid rgba(224,85,85,0.22)",borderRadius:6,padding:"6px 12px",cursor:"pointer",color:"#e05555",fontSize:10,fontFamily:"monospace"}}>Delete</button>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:700, color:"#a8e87e" }}>{loadResult.panelSize}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>min panel size</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:600, color:"#7eb8e8" }}>{(loadResult.totalVA/1000).toFixed(1)}kVA</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.4)" }}>total demand</div>
                   </div>
                 </div>
-              ))
-            }
-          </Sec>
-        )}
-
-        {/* ── NEC TAB ── */}
-        {activeTab==="nec"&&(
-          <div>
-            <Sec title="📖 NEC 2023 — Residential Reference">
-              <p style={{fontSize:12,color:"#5a5555",marginTop:0,lineHeight:1.6,marginBottom:14}}>Quick reference for the most-used NEC 2023 articles in residential work. Click any §code tag in the estimator to jump here.</p>
-              <input placeholder="Search articles, topics, or code numbers..." value={necSearch} onChange={e=>setNecSearch(e.target.value)} style={{...sel,marginBottom:10,fontSize:12}}/>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-                {necCats.map(c=>(
-                  <button key={c} onClick={()=>setNecCategory(c)} style={{padding:"4px 10px",borderRadius:20,cursor:"pointer",fontSize:10,fontFamily:"monospace",background:necCategory===c?(CAT_COLORS[c]||"#f5a623"):"rgba(255,255,255,0.03)",border:`1px solid ${necCategory===c?(CAT_COLORS[c]||"#f5a623"):"rgba(255,255,255,0.08)"}`,color:necCategory===c?"#0a0a0f":"#5a5555",fontWeight:necCategory===c?700:400}}>{c}</button>
+                {[
+                  { label:"General lighting (3 VA/sqft)", val: loadResult.lighting },
+                  { label:"Small appliance + laundry", val: loadResult.sabc },
+                  { label:"After demand factors", val: loadResult.gen },
+                  { label:"Dryers", val: loadResult.dryerVA },
+                  { label:"Ranges", val: loadResult.rangeVA },
+                  { label:"HVAC (larger of AC/heat)", val: loadResult.hvac },
+                ].filter(r => r.val > 0).map(row => (
+                  <div key={row.label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, padding:"3px 0", borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ color:"rgba(255,255,255,0.4)" }}>{row.label}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", color:"rgba(255,255,255,0.6)" }}>{row.val.toLocaleString()} VA</span>
+                  </div>
                 ))}
               </div>
-              <div style={{fontSize:10,color:"#2a2030",fontFamily:"monospace",marginBottom:10}}>{filteredNEC.length} articles</div>
-              {filteredNEC.map(ref=>(
-                <div key={ref.article} style={{background:"rgba(255,255,255,0.015)",border:"1px solid rgba(255,255,255,0.05)",borderRadius:9,padding:13,marginBottom:8,borderLeft:`3px solid ${CAT_COLORS[ref.category]||"#f5a623"}`}}>
-                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:5}}>
-                    <div><span style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"monospace"}}>§{ref.article}</span><span style={{fontSize:12,color:"#e0d8c8",marginLeft:9}}>{ref.title}</span></div>
-                    <span style={{fontSize:9,borderRadius:4,padding:"2px 6px",flexShrink:0,fontFamily:"monospace",background:`${CAT_COLORS[ref.category]||"#f5a623"}18`,color:CAT_COLORS[ref.category]||"#f5a623",border:`1px solid ${CAT_COLORS[ref.category]||"#f5a623"}33`}}>{ref.category}</span>
-                  </div>
-                  <p style={{margin:0,fontSize:11,color:"#6a6868",lineHeight:1.7}}>{ref.summary}</p>
-                </div>
-              ))}
-              <div style={{marginTop:18,padding:13,background:"rgba(245,166,35,0.04)",border:"1px solid rgba(245,166,35,0.15)",borderRadius:9}}>
-                <div style={{fontSize:9,letterSpacing:3,color:"#f5a623",fontFamily:"monospace",marginBottom:5,textTransform:"uppercase"}}>⚠️ Disclaimer</div>
-                <p style={{margin:0,fontSize:11,color:"#4a4848",lineHeight:1.7}}>These summaries are for quick reference only. Always verify with the full NEC 2023 codebook and your local AHJ, as local amendments may apply.</p>
-              </div>
-            </Sec>
+            )}
           </div>
-        )}
-
-        <div style={{textAlign:"center",marginTop:24,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.04)"}}>
-          <p style={{fontSize:10,color:"#1a1020",fontFamily:"monospace",margin:0}}>VoltQuote · {T.disclaimer}</p>
         </div>
+      )}
+
+      {/* ════════════ INSPECTION CHECKLIST MODAL ════════════ */}
+      {checklistOpen && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setChecklistOpen(false)}>
+          <div className="modal-box" style={{ padding:"24px", maxHeight:"85vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>NEC 2023 Inspection Checklist</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>Pre-inspection verification</div>
+              </div>
+              <button onClick={() => setChecklistOpen(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+              {Object.entries(CHECKLISTS).map(([key, val]) => (
+                <button key={key} onClick={() => setChecklistType(key)} style={{ padding:"5px 10px", borderRadius:6, fontSize:10, fontWeight:700, border: checklistType===key ? "1px solid rgba(232,120,120,0.5)" : "1px solid rgba(255,255,255,0.08)", background: checklistType===key ? "rgba(232,120,120,0.1)" : "rgba(255,255,255,0.03)", color: checklistType===key ? "#e87e7e" : "rgba(255,255,255,0.4)", cursor:"pointer", fontFamily:"inherit" }}>{val.label}</button>
+              ))}
+            </div>
+            {(() => {
+              const cl = CHECKLISTS[checklistType];
+              const done = cl.items.filter(i => checkedItems[i.id]).length;
+              return (
+                <>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>{done} / {cl.items.length} complete</div>
+                    <div style={{ height:4, flex:1, marginLeft:12, background:"rgba(255,255,255,0.06)", borderRadius:2, overflow:"hidden" }}>
+                      <div style={{ height:"100%", width:`${(done/cl.items.length)*100}%`, background:"#7dcea0", borderRadius:2, transition:"width 0.3s" }}/>
+                    </div>
+                  </div>
+                  {cl.items.map(item => (
+                    <div key={item.id} onClick={() => toggleCheck(item.id)} style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.04)", cursor:"pointer" }}>
+                      <div style={{ width:20, height:20, borderRadius:4, flexShrink:0, border: checkedItems[item.id] ? "1px solid #7dcea0" : "1px solid rgba(255,255,255,0.2)", background: checkedItems[item.id] ? "rgba(100,220,130,0.15)" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", marginTop:1, transition:"all 0.15s" }}>
+                        {checkedItems[item.id] && <span style={{ fontSize:11, color:"#7dcea0" }}>✓</span>}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12, color: checkedItems[item.id] ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.8)", textDecoration: checkedItems[item.id] ? "line-through" : "none", lineHeight:1.4 }}>{item.text}</div>
+                        <div style={{ fontSize:9, color:"rgba(232,201,122,0.5)", fontFamily:"'DM Mono',monospace", marginTop:2 }}>{item.nec}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {done === cl.items.length && done > 0 && (
+                    <div style={{ textAlign:"center", padding:"16px", background:"rgba(100,220,130,0.06)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:10, marginTop:12, color:"#7dcea0", fontSize:13, fontWeight:700 }}>
+                      ✓ All checks complete — ready for inspection
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════ CLIENT DATABASE MODAL ════════════ */}
+      {showClientDB && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setShowClientDB(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Client Database</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>{clients.length} saved client{clients.length !== 1 ? "s" : ""}</div>
+              </div>
+              <button onClick={() => setShowClientDB(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:22, cursor:"pointer" }}>✕</button>
+            </div>
+            <input placeholder="Search clients..." value={clientSearch} onChange={e => setClientSearch(e.target.value)} style={{ ...inputStyle, marginBottom:12 }} onFocus={focusGold} onBlur={blurGray} />
+            {clients.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"30px 20px", color:"rgba(255,255,255,0.2)", fontSize:12 }}>
+                No clients yet. Save a quote to add a client automatically.
+              </div>
+            ) : (
+              clients.filter(c => !clientSearch || c.name.toLowerCase().includes(clientSearch.toLowerCase())).map(c => (
+                <div key={c.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                  <div style={{ width:36, height:36, borderRadius:8, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:"#e8c97a", flexShrink:0 }}>
+                    {c.name[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#fff" }}>{c.name}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", fontFamily:"'DM Mono',monospace" }}>
+                      {[c.phone, c.email].filter(Boolean).join(" · ")} {c.jobCount > 1 ? `· ${c.jobCount} jobs` : ""}
+                    </div>
+                  </div>
+                  <button onClick={() => loadClient(c)} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(232,201,122,0.3)", background:"rgba(232,201,122,0.08)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                    Load
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+      {editingCompany && (
+        <div className="modal-overlay" onClick={e => e.target===e.currentTarget && setEditingCompany(false)}>
+          <div className="modal-box" style={{ padding:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, color:"#fff" }}>Company Profile</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2 }}>Appears on every quote you send</div>
+              </div>
+              <button onClick={() => setEditingCompany(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:20, cursor:"pointer", padding:"4px 8px" }}>✕</button>
+            </div>
+
+            {/* Logo upload */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Company Logo</div>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                {logoDataUrl
+                  ? <img src={logoDataUrl} alt="logo" style={{ height:52, width:"auto", maxWidth:140, objectFit:"contain", borderRadius:6, border:"1px solid rgba(255,255,255,0.1)" }} />
+                  : <div style={{ width:52, height:52, borderRadius:10, overflow:"hidden" }}><img src="/logo192.png" alt="Wireway" style={{ width:"100%", height:"100%", objectFit:"contain" }} /></div>
+                }
+                <div style={{ flex:1 }}>
+                  <label style={{ display:"inline-block", padding:"8px 14px", background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", borderRadius:7, color:"#e8c97a", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                    {logoDataUrl ? "Change Logo" : "Upload Logo"}
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display:"none" }} />
+                  </label>
+                  {logoDataUrl && (
+                    <button onClick={() => setLogoDataUrl("")} style={{ marginLeft:8, padding:"8px 12px", background:"transparent", border:"1px solid rgba(255,255,255,0.1)", borderRadius:7, color:"rgba(255,255,255,0.4)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Remove</button>
+                  )}
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.2)", marginTop:5 }}>PNG, JPG, SVG · max 2MB · appears on quotes</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Company fields */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+              {[
+                { ph:"Company name",        key:"name" },
+                { ph:"Phone number",        key:"phone" },
+                { ph:"Email address",       key:"email" },
+                { ph:"Website",             key:"website" },
+                { ph:"Street address",      key:"address" },
+                { ph:"License number",      key:"license" },
+                { ph:"Google Review URL",   key:"reviewUrl" },
+              ].map(f => (
+                <input key={f.key} placeholder={f.ph} value={companyDraft[f.key]||""} onChange={e => setCompanyDraft(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={inputStyle} onFocus={focusGold} onBlur={blurGray} />
+              ))}
+            </div>
+
+            {/* Terms */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Terms & Conditions (optional)</div>
+              <textarea placeholder="Payment due within 30 days. 50% deposit required before work begins. Estimate valid for 30 days..."
+                value={companyDraft.terms||""} onChange={e => setCompanyDraft(p => ({ ...p, terms: e.target.value }))}
+                rows={3} style={{ ...inputStyle, resize:"vertical", lineHeight:1.6 }} onFocus={focusGold} onBlur={blurGray} />
+            </div>
+
+            {/* Stripe */}
+            <div style={{ marginBottom:16, padding:"14px", background:"rgba(99,102,241,0.06)", border:"1px solid rgba(99,102,241,0.18)", borderRadius:10 }}>
+              <div style={{ fontSize:10, color:"rgba(129,140,248,0.8)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>⚡ Stripe Integration</div>
+              <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", marginBottom:8, lineHeight:1.6 }}>
+                Add your Stripe Secret Key to enable online payment collection. Get it from <span style={{ color:"#818cf8" }}>dashboard.stripe.com → Developers → API Keys</span>. Use test key (sk_test_...) first, then switch to live (sk_live_...) when ready.
+              </div>
+              <input
+                placeholder="sk_live_... or sk_test_..."
+                value={companyDraft.stripeKey||""}
+                onChange={e => setCompanyDraft(p => ({ ...p, stripeKey: e.target.value }))}
+                type="password"
+                style={{ ...inputStyle, fontFamily:"'DM Mono',monospace", fontSize:11 }}
+                onFocus={focusGold} onBlur={blurGray}
+              />
+              <div style={{ fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:5 }}>
+                Your key is stored locally on this device and never sent to Wireway servers — only to Stripe when a payment is requested.
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={saveCompany} disabled={companySaving} style={{ flex:1, padding:"12px", background:"linear-gradient(135deg,rgba(232,201,122,0.2),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:10, color: companySaving ? "rgba(232,201,122,0.4)" : "#e8c97a", fontSize:13, fontWeight:700, cursor: companySaving ? "default" : "pointer", fontFamily:"inherit" }}>
+                {companySaving ? "Saving..." : "Save Profile"}
+              </button>
+              <button onClick={() => setEditingCompany(false)} style={{ padding:"12px 20px", background:"transparent", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, color:"rgba(255,255,255,0.4)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
-      <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}} select option{background:#1a1a2e} textarea{font-family:Georgia,serif;color:#e8e0d0;} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:#0a0a0f} ::-webkit-scrollbar-thumb{background:#f5a623;border-radius:2px}`}</style>
-    </div>
+      </div>
+
+    </>
   );
 }
-
-function Sec({title,children}){return <div style={{marginBottom:22}}><div style={{fontSize:10,letterSpacing:4,color:"#f5a623",fontFamily:"monospace",textTransform:"uppercase",marginBottom:10}}>{title}</div>{children}</div>;}
-
-const sel={width:"100%",padding:"10px 12px",background:"rgba(255,255,255,0.035)",border:"1px solid rgba(245,166,35,0.25)",borderRadius:8,color:"#e8e0d0",fontSize:13,fontFamily:"Georgia,serif",cursor:"pointer",outline:"none",boxSizing:"border-box"};
-const qBtn={width:27,height:27,borderRadius:6,background:"rgba(245,166,35,0.09)",border:"1px solid rgba(245,166,35,0.2)",color:"#f5a623",fontSize:15,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1,flexShrink:0};
-const ghostBtn={background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:7,cursor:"pointer",color:"#6a6055",fontFamily:"monospace",letterSpacing:1};

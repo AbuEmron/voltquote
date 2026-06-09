@@ -933,54 +933,50 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                     </div>
                   )}
 
-                  {/* ── DEPOSIT PERCENT SELECTOR ── */}
+                  {/* ── DEPOSIT + PAYMENT ── */}
                   {depositOnly && (
                     <div style={{ display:"flex", gap:4, marginBottom:10 }}>
                       {[25,50,75,100].map(pct => (
-                        <button key={pct} onClick={() => setDepositPercent(pct)} style={{ flex:1, padding:"6px", borderRadius:6, border: depositPercent===pct ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositPercent===pct ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: depositPercent===pct ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>{pct}%</button>
+                        <button key={pct} onClick={() => setDepositPercent(pct)} style={{ flex:1, padding:"6px", borderRadius:6, border: depositPercent===pct ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(255,255,255,0.08)", background: depositPercent===pct ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.03)", color: depositPercent===pct ? "#818cf8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"'DM Mono',monospace" }}>
+                          {pct}%
+                        </button>
                       ))}
                     </div>
                   )}
-
-                    {/* Amount preview */}
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", background:"rgba(255,255,255,0.04)", borderRadius:8, marginBottom:12 }}>
-                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>
-                        {depositOnly ? `${depositPercent}% deposit` : "Full payment"} to charge: </span>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:700, color:"#818cf8" }}>
-                        ${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}
-                      </span>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 12px", background:"rgba(255,255,255,0.04)", borderRadius:8, marginBottom:12 }}>
+                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>
+                      {depositOnly ? `${depositPercent}% deposit` : "Full payment"} to charge:
+                    </span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:700, color:"#818cf8" }}>
+                      ${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}
+                    </span>
+                  </div>
+                  {paymentError && (
+                    <div style={{ fontSize:11, color:"#e87e7e", background:"rgba(232,126,126,0.08)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10, lineHeight:1.5 }}>
+                      ⚠ {paymentError}
                     </div>
-
-                    {/* Error message */}
-                    {paymentError && (
-                      <div style={{ fontSize:11, color:"#e87e7e", background:"rgba(232,126,126,0.08)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10, lineHeight:1.5 }}>
-                        ⚠ {paymentError} </div>
-                        )}
-
-                    {/* Success message */}
-                    {paymentSuccess && (
-                      <div style={{ fontSize:11, color:"#7dcea0", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10 }}>
-                        ✓ Payment received! Quote marked as paid. </div>
-                        )}
-
-                    {/* Pay button */}
-                    {!company.stripeKey ? (
-                      <button onClick={() => setEditingCompany(true)} style={{ width:"100%", padding:"13px", background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, color:"#818cf8", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                        ⚙ Connect Stripe in Company Settings </button>
-                    ) : (
-                      <button onClick={() => requirePro(requestPayment)} disabled={paymentLoading} style={{ width:"100%", padding:"13px", background: paymentLoading ? "rgba(99,102,241,0.06)" : "linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15))", border:"1px solid rgba(99,102,241,0.4)", borderRadius:10, color: paymentLoading ? "rgba(129,140,248,0.5)" : "#818cf8", fontSize:13, fontWeight:700, cursor: paymentLoading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
-                        {paymentLoading ? "Opening Stripe Checkout..." : `⚡ Send Payment Request — $${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}`}
-                      </button>
                   )}
-
-                    <div style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:8 }}>
-                      Powered by Stripe · Secure · PCI compliant · Client pays in their browser
+                  {paymentSuccess && (
+                    <div style={{ fontSize:11, color:"#7dcea0", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:10 }}>
+                      ✓ Payment received! Quote marked as paid.
                     </div>
-                    </div>
+                  )}
+                  {!company.stripeKey ? (
+                    <button onClick={() => setEditingCompany(true)} style={{ width:"100%", padding:"13px", background:"rgba(99,102,241,0.1)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, color:"#818cf8", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                      ⚙ Connect Stripe in Company Settings
+                    </button>
+                  ) : (
+                    <button onClick={() => requirePro(requestPayment)} disabled={paymentLoading} style={{ width:"100%", padding:"13px", background: paymentLoading ? "rgba(99,102,241,0.06)" : "linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.15))", border:"1px solid rgba(99,102,241,0.4)", borderRadius:10, color: paymentLoading ? "rgba(129,140,248,0.5)" : "#818cf8", fontSize:13, fontWeight:700, cursor: paymentLoading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+                      {paymentLoading ? "Opening Stripe Checkout..." : `⚡ Send Payment Request — $${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}`}
+                    </button>
+                  )}
+                  <div style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:8 }}>
+                    Powered by Stripe · Secure · PCI compliant · Client pays in their browser
+                  </div>
                 </>
-                )}
-                </div>
-                )}
+              )}
+            </div>
+          )}
 
           {/* ════════════ SAVED QUOTES TAB ════════════ */}
           {tab==="saved" && (
@@ -1273,6 +1269,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           </div>
         </div>
       )}
+
+      </div>
 
       <WiremModals {...{
         wireCalcOpen,setWireCalcOpen,wireAmps,setWireAmps,wireLen,setWireLen,

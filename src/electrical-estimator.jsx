@@ -1431,15 +1431,21 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
 
       </div>
 
-      <WiremModals
-        wireCalcOpen={wireCalcOpen} setWireCalcOpen={setWireCalcOpen} wireAmps={wireAmps} setWireAmps={setWireAmps} wireLen={wireLen} setWireLen={setWireLen} wireVolt={wireVolt} setWireVolt={setWireVolt} wireMat={wireMat} setWireMat={setWireMat} wireResult={wireResult}
-        loadCalcOpen={loadCalcOpen} setLoadCalcOpen={setLoadCalcOpen} sqft={sqft} setSqft={setSqft} smallAppl={smallAppl} setSmallAppl={setSmallAppl} laundry={laundry} setLaundry={setLaundry} dryer={dryer} setDryer={setDryer} range={range} setRange={setRange} acTons={acTons} setAcTons={setAcTons} heatKw={heatKw} setHeatKw={setHeatKw} loadResult={loadResult}
-        checklistOpen={checklistOpen} setChecklistOpen={setChecklistOpen} checklistType={checklistType} setChecklistType={setChecklistType} checkedItems={checkedItems} toggleCheck={toggleCheck} CHECKLISTS={CHECKLISTS}
-        showClientDB={showClientDB} setShowClientDB={setShowClientDB} clientSearch={clientSearch} setClientSearch={setClientSearch} clients={clients} loadClient={loadClient}
-        signModal={signModal} setSignModal={setSignModal} sigName={sigName} setSigName={setSigName} sigDate={sigDate} setSigDate={setSigDate} sigSaved={sigSaved} acceptQuote={acceptQuote} quoteNumber={quoteNumber} total={total} activeItems={activeItems} company={company} inputStyle={inputStyle} focusGold={focusGold} blurGray={blurGray} currentQuoteStatus={currentQuoteStatus}
-        editingCompany={editingCompany} setEditingCompany={setEditingCompany} companyDraft={companyDraft} setCompanyDraft={setCompanyDraft} logoDataUrl={logoDataUrl} setLogoDataUrl={setLogoDataUrl} saveCompany={saveCompany} handleLogoUpload={handleLogoUpload} companySaving={companySaving}
-        showAccount={showAccount} setShowAccount={setShowAccount} user={user} profile={profile} savedQuotes={savedQuotes} onShowPricing={onShowPricing} paymentBanner={paymentBanner} paymentSuccess={paymentSuccess} setPaymentSuccess={setPaymentSuccess} onClearBanner={onClearBanner}
-      />
+      <WiremModals {...{
+        wireCalcOpen,setWireCalcOpen,wireAmps,setWireAmps,wireLen,setWireLen,
+        wireVolt,setWireVolt,wireMat,setWireMat,wireResult,
+        loadCalcOpen,setLoadCalcOpen,sqft,setSqft,smallAppl,setSmallAppl,
+        laundry,setLaundry,dryer,setDryer,range,setRange,acTons,setAcTons,
+        heatKw,setHeatKw,loadResult,checklistOpen,setChecklistOpen,
+        checklistType,setChecklistType,checkedItems,toggleCheck,CHECKLISTS,
+        showClientDB,setShowClientDB,clientSearch,setClientSearch,clients,loadClient,
+        signModal,setSignModal,sigName,setSigName,sigDate,setSigDate,sigSaved,
+        acceptQuote,quoteNumber,total,activeItems,company,inputStyle,focusGold,
+        blurGray,currentQuoteStatus,editingCompany,setEditingCompany,companyDraft,
+        setCompanyDraft,logoDataUrl,setLogoDataUrl,saveCompany,handleLogoUpload,
+        companySaving,showAccount,setShowAccount,user,profile,savedQuotes,
+        onShowPricing,paymentBanner,paymentSuccess,setPaymentSuccess,onClearBanner,
+      }} />
     </>
   );
 }

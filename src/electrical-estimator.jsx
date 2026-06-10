@@ -4,6 +4,7 @@ import { signOut, getQuotes, upsertQuote, deleteQuote as dbDeleteQuote, updateQu
 import { CATEGORIES, MARKUP_OPTIONS, HOURLY_RATES, ALL_SERVICES, CHECKLISTS } from "./data/catalog";
 import { JobCalendar, PhotoAttachments, QuickBooksExport, AutoInvoiceButton, OnMyWayButton, ReviewRequestButton } from "./features";
 import AIQuoteBuilder from "./AIQuoteBuilder";
+import ProposalView from "./ProposalView";
 import { Pill, StatCard, CategorySection, NECReference } from "./WiremComponents";
 import WiremModals from "./WiremModals";
 export default function Wireway({ user, profile, onProfileUpdate, onShowPricing, paymentBanner, onClearBanner }) {
@@ -61,6 +62,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [showAccount,    setShowAccount]    = useState(false);
   const [showCalendar,   setShowCalendar]   = useState(false);
   const [showAIBuilder,  setShowAIBuilder]  = useState(false);
+  const [showProposal,   setShowProposal]   = useState(false);
   const [proGateMsg,     setProGateMsg]     = useState("");
 
   const wireResult = useMemo(() => {
@@ -891,10 +893,9 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                     ))}
                     </div>
 
-                  <button onClick={() => window.print()} style={{ width:"100%", padding:"11px", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"rgba(255,255,255,0.5)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }} className="no-print"
-                    onMouseEnter={e => e.currentTarget.style.background="rgba(255,255,255,0.08)"}
-                    onMouseLeave={e => e.currentTarget.style.background="rgba(255,255,255,0.04)"}>
-                    🖨 Print / Save as PDF </button>
+                  <button onClick={() => setShowProposal(true)} style={{ width:"100%", padding:"13px", background:"linear-gradient(135deg,rgba(232,201,122,0.18),rgba(232,201,122,0.06))", border:"1px solid rgba(232,201,122,0.35)", borderRadius:10, color:"#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }} className="no-print">
+                    📄 Generate Proposal (PDF)
+                  </button>
 
                   {/* ── ON MY WAY + REVIEW ── */}
                   <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:2 }} className="no-print">
@@ -1268,6 +1269,16 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             </div>
           </div>
         </div>
+      )}
+
+      {showProposal && (
+        <ProposalView
+          company={company} clientName={clientName} clientEmail={clientEmail} clientPhone={clientPhone}
+          jobName={jobName} notes={notes} quoteNumber={quoteNumber} activeItems={activeItems}
+          subtotal={subtotal} markupAmt={markupAmt} taxAmt={taxAmt} taxEnabled={taxEnabled} total={total}
+          depositPercent={depositPercent} sigName={sigSaved ? sigName : ""} sigDate={sigSaved ? sigDate : ""}
+          onClose={() => setShowProposal(false)}
+        />
       )}
 
       <WiremModals {...{

@@ -5,6 +5,8 @@ import { CATEGORIES, MARKUP_OPTIONS, HOURLY_RATES, ALL_SERVICES, CHECKLISTS } fr
 import { JobCalendar, PhotoAttachments, QuickBooksExport, AutoInvoiceButton, OnMyWayButton, ReviewRequestButton } from "./features";
 import AIQuoteBuilder from "./AIQuoteBuilder";
 import ProposalView from "./ProposalView";
+import CustomersView from "./CustomersView";
+import Dashboard from "./Dashboard";
 import { Pill, StatCard, CategorySection, NECReference } from "./WiremComponents";
 import WiremModals from "./WiremModals";
 export default function Wireway({ user, profile, onProfileUpdate, onShowPricing, paymentBanner, onClearBanner }) {
@@ -63,6 +65,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [showCalendar,   setShowCalendar]   = useState(false);
   const [showAIBuilder,  setShowAIBuilder]  = useState(false);
   const [showProposal,   setShowProposal]   = useState(false);
+  const [showCustomers,  setShowCustomers]  = useState(false);
+  const [showDashboard,  setShowDashboard]  = useState(true);
   const [proGateMsg,     setProGateMsg]     = useState("");
 
   const wireResult = useMemo(() => {
@@ -494,6 +498,68 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const focusGold = e => e.target.style.borderColor = "rgba(232,201,122,0.4)";
   const blurGray  = e => e.target.style.borderColor = "rgba(255,255,255,0.07)";
 
+  // ── DASHBOARD HOME (early return) ──
+  if (showDashboard) {
+    return (
+      <>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+          *{box-sizing:border-box;margin:0;padding:0}
+          @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        `}</style>
+        <div style={{ minHeight:"100vh", background:"radial-gradient(ellipse 80% 40% at 50% 0%,rgba(232,201,122,0.06) 0%,transparent 55%),#0a0a0c", fontFamily:"'DM Sans',sans-serif" }}>
+          <div style={{ borderBottom:"1px solid rgba(255,255,255,0.06)", background:"rgba(10,10,12,0.9)", backdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }}>
+            <div style={{ maxWidth:680, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <img src="/logo192.png" alt="Wireway" style={{ height:30, width:30, borderRadius:7, objectFit:"cover" }} />
+                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.02em" }}>
+                  <span style={{ color:"#e8c97a" }}>WIRE</span>WAY
+                </span>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => setShowCustomers(true)} title="Customers" style={{ padding:"6px 11px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>👥</button>
+                <button onClick={() => { newQuote(true); setShowDashboard(false); }} style={{ padding:"6px 14px", borderRadius:7, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ New Estimate</button>
+                <button onClick={() => setShowAccount(true)} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Account</button>
+              </div>
+            </div>
+          </div>
+          <div style={{ maxWidth:680, margin:"0 auto", padding:"20px 20px 60px" }}>
+            <Dashboard
+              user={user} profile={profile}
+              onNewQuote={(job) => { newQuote(true); setJobName(job.label); setShowDashboard(false); setTab("services"); }}
+              onLoadQuote={(q) => { loadQuote(q); setShowDashboard(false); }}
+              onShowAI={() => { setShowDashboard(false); setTimeout(() => setShowAIBuilder(true), 100); }}
+              onOpenCalendar={() => { setShowDashboard(false); setTimeout(() => setShowCalendar(true), 100); }}
+            />
+          </div>
+        </div>
+        {showCustomers && (
+          <CustomersView
+            clients={clients} savedQuotes={savedQuotes}
+            onLoadQuote={(q) => { loadQuote(q); setShowCustomers(false); setShowDashboard(false); }}
+            onNewEstimate={(cl) => { newQuote(true); setClientName(cl.name || ""); setClientEmail(cl.email || ""); setClientPhone(cl.phone || ""); setShowCustomers(false); setShowDashboard(false); setTab("services"); }}
+            onClose={() => setShowCustomers(false)}
+          />
+        )}
+        {showAccount && (
+          <div onClick={e => e.target === e.currentTarget && setShowAccount(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", backdropFilter:"blur(8px)", zIndex:400, display:"flex", alignItems:"center", justifyContent:"center", padding:"24px 16px" }}>
+          <div style={{ background:"#111115", border:"1px solid rgba(255,255,255,0.1)", borderRadius:18, width:"100%", maxWidth:380, padding:"24px", fontFamily:"'DM Sans',sans-serif", color:"#fff" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800 }}>Account</span>
+              <button onClick={() => setShowAccount(false)} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:20, cursor:"pointer" }}>✕</button>
+            </div>
+            <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginBottom:16 }}>{user?.email}</div>
+            {onShowPricing && profile?.subscription_status !== "active" && (
+              <button onClick={onShowPricing} style={{ width:"100%", padding:"12px", marginBottom:8, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", borderRadius:10, color:"#e8c97a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>⚡ Upgrade to Pro</button>
+            )}
+            <button onClick={async () => { await signOut(); window.location.reload(); }} style={{ width:"100%", padding:"12px", background:"rgba(232,126,126,0.06)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:10, color:"#e87e7e", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Sign Out</button>
+          </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       <style>{`
@@ -538,6 +604,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             )}
               <button onClick={newQuote} style={{ padding:"5px 11px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                 + New </button>
+              <button onClick={() => setShowDashboard(true)} title="Home" style={{ padding:"5px 9px", borderRadius:6, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:13, cursor:"pointer" }}>
+                🏠 </button>
               {/* Combined account + company menu */}
               <div style={{ display:"flex", gap:1, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:7, overflow:"hidden" }}>
                 <button onClick={() => setShowAccount(true)} style={{ padding:"5px 10px", border:"none", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", borderRight:"1px solid rgba(255,255,255,0.06)" }}>
@@ -1269,6 +1337,15 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             </div>
           </div>
         </div>
+      )}
+
+      {showCustomers && (
+        <CustomersView
+          clients={clients} savedQuotes={savedQuotes}
+          onLoadQuote={(q) => { loadQuote(q); setShowCustomers(false); }}
+          onNewEstimate={(cl) => { newQuote(true); setClientName(cl.name || ""); setClientEmail(cl.email || ""); setClientPhone(cl.phone || ""); setShowCustomers(false); setTab("services"); }}
+          onClose={() => setShowCustomers(false)}
+        />
       )}
 
       {showProposal && (

@@ -294,7 +294,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
       newEntries[item.id] = {
         qty:        item.qty,
         variantIdx: item.variantIdx,
-        clientBuys: false,
+        clientBuys: !!item.clientBuys,
       };
     });
     setEntries(newEntries);
@@ -357,7 +357,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const laborPct      = total > 0 ? (totLab / total * 100).toFixed(1) : "0";
   const effectiveRate = totHrs > 0 ? (total / totHrs).toFixed(0) : "0";
 
-  const requestPayment = async () => {
+  const requestPayment = async (mode = "open") => {
     if (!hasItems || paymentLoading) return;
     if (!company.stripeKey) {
       setPaymentError("Add your Stripe Publishable Key in ⚙ Company Settings first.");
@@ -386,7 +386,16 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
       });
       const data = await res.json();
       if (data.url) {
-        window.open(data.url, "_blank");
+        if (mode === "sms") {
+          const msg = `Hi ${clientName || "there"}, here's your secure payment link for ${jobName || quoteNumber || "your project"}: ${data.url} — ${company.name || "Wireway"}`;
+          const sep = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "?&" : "?";
+          window.location.href = `sms:${(clientPhone || "").replace(/[^+\d]/g, "")}${sep}body=${encodeURIComponent(msg)}`;
+        } else if (mode === "copy") {
+          try { await navigator.clipboard.writeText(data.url); setSaveMsg("Payment link copied — paste it anywhere"); setTimeout(() => setSaveMsg(""), 3000); }
+          catch { window.prompt("Copy this payment link:", data.url); }
+        } else {
+          window.open(data.url, "_blank");
+        }
       } else {
         setPaymentError(data.error || "Could not create checkout session.");
       }
@@ -512,14 +521,14 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
             <div style={{ maxWidth:680, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <img src="/logo192.png" alt="Wireway" style={{ height:30, width:30, borderRadius:7, objectFit:"cover" }} />
-                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:16, fontWeight:800, letterSpacing:"-0.02em" }}>
+                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, letterSpacing:"-0.02em", whiteSpace:"nowrap", flexShrink:0 }}>
                   <span style={{ color:"#e8c97a" }}>WIRE</span>WAY
                 </span>
               </div>
-              <div style={{ display:"flex", gap:8 }}>
+              <div style={{ display:"flex", gap:6 }}>
                 <button onClick={() => setShowCustomers(true)} title="Customers" style={{ padding:"6px 11px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>👥</button>
-                <button onClick={() => { newQuote(true); setShowDashboard(false); }} style={{ padding:"6px 14px", borderRadius:7, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ New Estimate</button>
-                <button onClick={() => setShowAccount(true)} style={{ padding:"6px 12px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Account</button>
+                <button onClick={() => { newQuote(true); setShowDashboard(false); }} style={{ padding:"6px 11px", borderRadius:7, background:"rgba(232,201,122,0.1)", border:"1px solid rgba(232,201,122,0.3)", color:"#e8c97a", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>+ New</button>
+                <button onClick={() => setShowAccount(true)} title="Account" style={{ padding:"6px 10px", borderRadius:7, border:"1px solid rgba(255,255,255,0.08)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>⚙</button>
               </div>
             </div>
           </div>
@@ -1039,8 +1048,18 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                       {paymentLoading ? "Opening Stripe Checkout..." : `⚡ Send Payment Request — $${depositOnly ? Math.round(total * depositPercent / 100).toLocaleString() : total.toLocaleString()}`}
                     </button>
                   )}
+                  {company.stripeKey && (
+                    <div style={{ display:"flex", gap:6, marginTop:8 }}>
+                      <button onClick={() => requirePro(() => requestPayment("sms"))} disabled={paymentLoading} style={{ flex:1, padding:"10px", borderRadius:9, background:"rgba(126,200,232,0.07)", border:"1px solid rgba(126,200,232,0.25)", color:"#7ec8e8", fontSize:11.5, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        💬 Text Pay Link
+                      </button>
+                      <button onClick={() => requirePro(() => requestPayment("copy"))} disabled={paymentLoading} style={{ flex:1, padding:"10px", borderRadius:9, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.55)", fontSize:11.5, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                        🔗 Copy Pay Link
+                      </button>
+                    </div>
+                  )}
                   <div style={{ textAlign:"center", fontSize:9, color:"rgba(255,255,255,0.2)", marginTop:8 }}>
-                    Powered by Stripe · Secure · PCI compliant · Client pays in their browser
+                    Powered by Stripe · Secure · PCI compliant · Apple Pay & Google Pay supported
                   </div>
                 </>
               )}

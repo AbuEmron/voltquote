@@ -55,6 +55,7 @@ RULES:
 5. If a service isn't in the catalog, skip it — only use catalog items
 6. Include NEC-required related items (e.g. GFCI with pool circuits, surge with panel upgrade)
 7. Be thorough — include ALL relevant services for the described job
+8. MATERIAL SUPPLIER: set "clientBuys": true on any item where the description says the customer/client/homeowner is supplying, purchasing, or providing that material (e.g. "customer bought the fixtures", "homeowner is supplying the fan"). If they say they're supplying ALL materials, set it true on every item. Otherwise false.
 
 RETURN FORMAT (JSON array):
 [
@@ -63,6 +64,7 @@ RETURN FORMAT (JSON array):
     "qty": 2,
     "variantIdx": 0,
     "variantLabel": "variant name",
+    "clientBuys": false,
     "reason": "one sentence why this is included"
   }
 ]
@@ -72,6 +74,7 @@ After the JSON array, on a new line starting with "SUMMARY:", write a 2-sentence
 
 export default function AIQuoteBuilder({ onApplyEstimate, onClose }) {
   const [prompt,    setPrompt]    = useState("");
+  const [matSupplier, setMatSupplier] = useState("me"); // "me" | "client"
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState("");
   const [result,    setResult]    = useState(null); // { items, summary, total }
@@ -157,7 +160,8 @@ export default function AIQuoteBuilder({ onApplyEstimate, onClose }) {
     if (!result || applying) return;
     setApplying(true);
     const toApply = result.items.filter(i => selected[i.id]);
-    onApplyEstimate(toApply);
+    const withSupplier = toApply.map(i => ({ ...i, clientBuys: matSupplier === "client" ? true : !!i.clientBuys }));
+    onApplyEstimate(withSupplier);
     setApplying(false);
   };
 
@@ -195,6 +199,21 @@ export default function AIQuoteBuilder({ onApplyEstimate, onClose }) {
 
           {/* Input area */}
           <div style={{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:14, padding:"16px", marginBottom:12 }}>
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+
+              <button onClick={() => setMatSupplier("me")} style={{ flex:1, padding:"8px", borderRadius:7, border: matSupplier==="me" ? "1px solid rgba(232,201,122,0.5)" : "1px solid rgba(255,255,255,0.08)", background: matSupplier==="me" ? "rgba(232,201,122,0.12)" : "rgba(255,255,255,0.03)", color: matSupplier==="me" ? "#e8c97a" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+
+                ⚡ I supply materials
+
+              </button>
+
+              <button onClick={() => setMatSupplier("client")} style={{ flex:1, padding:"8px", borderRadius:7, border: matSupplier==="client" ? "1px solid rgba(126,200,232,0.5)" : "1px solid rgba(255,255,255,0.08)", background: matSupplier==="client" ? "rgba(126,200,232,0.1)" : "rgba(255,255,255,0.03)", color: matSupplier==="client" ? "#7ec8e8" : "rgba(255,255,255,0.4)", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+
+                👤 Client supplies
+
+              </button>
+
+            </div>
             <textarea
               placeholder="Describe the electrical job in plain English...&#10;&#10;Example: Install 12 recessed lights with 3 dimmers, add a dedicated 20A circuit for a home office, and replace 4 GFCI outlets in the kitchen."
               value={prompt}

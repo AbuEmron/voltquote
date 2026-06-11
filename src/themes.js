@@ -4,6 +4,16 @@
 
 export const THEMES = [
   {
+    id: "wireway",
+    name: "Wireway",
+    desc: "Official brand. Electric blue, live current.",
+    accent: "#3aa9ff",
+    accentRgb: "58,169,255",
+    bg: "#080b10",
+    surface: "#0e1420",
+    free: true,
+  },
+  {
     id: "gold",
     name: "Gold Standard",
     desc: "The original. Brass on matte black.",
@@ -66,7 +76,7 @@ export function applyTheme(themeId) {
 }
 
 export function getSavedTheme() {
-  try { return window.localStorage.getItem("wireway_theme") || "gold"; } catch { return "gold"; }
+  try { return window.localStorage.getItem("wireway_theme") || "wireway"; } catch { return "wireway"; }
 }
 
 export function saveTheme(id) {

@@ -333,6 +333,11 @@ export default function AIQuoteBuilder({ onApplyEstimate, onClose }) {
                     </div>
                   ))}
                 </div>
+                {clientMat > 0 && (
+                  <div style={{ marginTop:10, fontSize:11, color:"#7ec8e8", background:"rgba(126,200,232,0.07)", border:"1px solid rgba(126,200,232,0.2)", borderRadius:7, padding:"7px 10px", textAlign:"center" }}>
+                    👤 Client supplies ${clientMat.toLocaleString()} in materials — not included in your price
+                  </div>
+                )}
                 <div style={{ fontSize:10, color:"rgba(255,255,255,0.25)", textAlign:"center", marginTop:8 }}>
                   Subtotal before markup · add your margin in the estimate
                 </div>

@@ -67,7 +67,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [showCalendar,   setShowCalendar]   = useState(false);
   const [showAIBuilder,  setShowAIBuilder]  = useState(false);
   const [showProposal,   setShowProposal]   = useState(false);
-  const [showMaterials,  setShowMaterials]  = useState(false);
+  const [showPullList,   setShowPullList]   = useState(false);
   const [showCustomers,  setShowCustomers]  = useState(false);
   const [showDashboard,  setShowDashboard]  = useState(true);
   const [theme,          setTheme]          = useState(getSavedTheme());
@@ -1008,7 +1008,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
                     📄 Generate Proposal (PDF)
                   </button>
 
-                  <button onClick={() => setShowMaterials(true)} style={{ width:"100%", padding:"12px", marginTop:6, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"rgba(255,255,255,0.6)", fontSize:12.5, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }} className="no-print">
+                  <button onClick={() => setShowPullList(true)} style={{ width:"100%", padding:"12px", marginTop:6, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"rgba(255,255,255,0.6)", fontSize:12.5, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }} className="no-print">
                     🧾 Material Pull List & Prices
                   </button>
 
@@ -1405,12 +1405,12 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
         />
       )}
 
-      {showMaterials && (
+      {showPullList && (
         <MaterialsListView
           activeItems={activeItems}
           totMat={totMat}
           jobName={jobName}
-          onClose={() => setShowMaterials(false)}
+          onClose={() => setShowPullList(false)}
         />
       )}
 

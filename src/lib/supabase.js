@@ -274,3 +274,7 @@ export const deletePhoto = async (id) => {
   const { error } = await supabase.from("photos").delete().eq("id", id);
   return { error };
 };
+// ── THEME ────────────────────────────────
+export const saveThemePref = async (userId, theme) => {
+  try { await supabase.from("profiles").update({ theme }).eq("id", userId); } catch { /* non-critical */ }
+};

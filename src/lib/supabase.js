@@ -291,6 +291,14 @@ export const deleteClient = async (userId, clientId) => {
   return { error };
 };
 
+// ── WIREWAY ELITE (industrial tier) ──────
+// Dark until launch: unlocks for plan="elite" profiles, or on this device
+// via localStorage "wireway_elite_preview" = "1" for pre-launch testing.
+export const isElite = (profile) => {
+  if (profile?.plan === "elite") return true;
+  try { return window.localStorage.getItem("wireway_elite_preview") === "1"; } catch { return false; }
+};
+
 // ── THEME ────────────────────────────────
 export const saveThemePref = async (userId, theme) => {
   try { await supabase.from("profiles").update({ theme }).eq("id", userId); } catch { /* non-critical */ }

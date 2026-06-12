@@ -35,6 +35,7 @@ export const signIn = async ({ email, password }) => {
 };
 
 export const signOut = async () => {
+  try { window.localStorage.removeItem("wireway_session_v1"); } catch { /* ignore */ }
   const { error } = await supabase.auth.signOut();
   return { error };
 };

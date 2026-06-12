@@ -12,28 +12,53 @@ import { WirewayMark, WirewayLogo } from "./Logo";
 import Dashboard from "./Dashboard";
 import { Pill, StatCard, CategorySection, NECReference } from "./WiremComponents";
 import WiremModals from "./WiremModals";
+// ── SESSION RESTORE ──────────────────────────────────────────────
+// Mobile browsers evict the page when you switch apps or follow a link.
+// Snapshot the working state continuously; restore it on reload so the
+// app reopens exactly where you left off instead of resetting to the dashboard.
+const SESSION_KEY = "wireway_session_v1";
+function loadSession() {
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || (Date.now() - (s.at || 0)) > 1000 * 60 * 60 * 12) return null; // 12h freshness
+    return s;
+  } catch { return null; }
+}
+function saveSession(s) {
+  try { window.localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, at: Date.now() })); } catch { /* storage blocked */ }
+}
+export function clearSession() {
+  try { window.localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
 export default function Wireway({ user, profile, onProfileUpdate, onShowPricing, paymentBanner, onClearBanner }) {
-  const [entries,        setEntries]        = useState({});
+  const SAVED = (() => {
+    const s = loadSession();
+    return s && (!s.uid || s.uid === user?.id) ? s : null;
+  })();
+  const [entries,        setEntries]        = useState(SAVED?.entries || {});
   const [hourlyRate,     setHourlyRate]     = useState(profile?.hourly_rate || 85);
   const [markup,         setMarkup]         = useState(Number(profile?.default_markup) || 0.30);
-  const [clientName,     setClientName]     = useState("");
-  const [clientEmail,    setClientEmail]    = useState("");
-  const [clientPhone,    setClientPhone]    = useState("");
-  const [jobName,        setJobName]        = useState("");
-  const [notes,          setNotes]          = useState("");
-  const [tab,            setTab]            = useState("services");
+  const [clientName,     setClientName]     = useState(SAVED?.clientName || "");
+  const [clientEmail,    setClientEmail]    = useState(SAVED?.clientEmail || "");
+  const [clientPhone,    setClientPhone]    = useState(SAVED?.clientPhone || "");
+  const [jobName,        setJobName]        = useState(SAVED?.jobName || "");
+  const [notes,          setNotes]          = useState(SAVED?.notes || "");
+  const [tab,            setTab]            = useState(SAVED?.tab || "services");
   const [showMaterials,  setShowMaterials]  = useState(true);
   const [clientBuysAll,  setClientBuysAll]  = useState(false);
   const [copied,         setCopied]         = useState(false);
-  const [quoteNumber,    setQuoteNumber]    = useState("");
-  const [quoteId,        setQuoteId]        = useState(null);
+  const [quoteNumber,    setQuoteNumber]    = useState(SAVED?.quoteNumber || "");
+  const [quoteId,        setQuoteId]        = useState(SAVED?.quoteId || null);
   const [signModal,      setSignModal]      = useState(false);
   const [sigName,        setSigName]        = useState("");
   const [sigDate,        setSigDate]        = useState("");
   const [sigSaved,       setSigSaved]       = useState(false);
   const [savedQuotes,    setSavedQuotes]    = useState([]);
   const [saveMsg,        setSaveMsg]        = useState("");
-  const [customItems,    setCustomItems]    = useState([]);
+  const [customItems,    setCustomItems]    = useState(SAVED?.customItems || []);
   const [taxEnabled,     setTaxEnabled]     = useState(false);
   const [taxRate,        setTaxRate]        = useState(0.08);
   const [invoiceMode,    setInvoiceMode]    = useState(false);
@@ -59,8 +84,8 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [checklistOpen,  setChecklistOpen]  = useState(false);
   const [checklistType,  setChecklistType]  = useState("service_upgrade");
   const [checkedItems,   setCheckedItems]   = useState({});
-  const [depositOnly,    setDepositOnly]    = useState(true);
-  const [depositPercent, setDepositPercent] = useState(50);
+  const [depositOnly,    setDepositOnly]    = useState(SAVED ? !!SAVED.depositOnly : true);
+  const [depositPercent, setDepositPercent] = useState(SAVED?.depositPercent || 50);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError,   setPaymentError]   = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(!!paymentBanner);
@@ -70,9 +95,12 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
   const [showProposal,   setShowProposal]   = useState(false);
   const [showPullList,   setShowPullList]   = useState(false);
   const [showCustomers,  setShowCustomers]  = useState(false);
-  const [showDashboard,  setShowDashboard]  = useState(true);
+  const [showDashboard,  setShowDashboard]  = useState(SAVED ? !!SAVED.showDashboard : true);
   const [theme,          setTheme]          = useState(() => profile?.theme || getSavedTheme());
   useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => {
+    saveSession({ uid: user?.id, showDashboard, tab, entries, customItems, clientName, clientEmail, clientPhone, jobName, notes, quoteNumber, quoteId, depositOnly, depositPercent });
+  }, [showDashboard, tab, entries, customItems, clientName, clientEmail, clientPhone, jobName, notes, quoteNumber, quoteId, depositOnly, depositPercent]);
   const [proGateMsg,     setProGateMsg]     = useState("");
 
   const wireResult = useMemo(() => {

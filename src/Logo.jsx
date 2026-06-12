@@ -57,7 +57,7 @@ export function WirewayLogo({ size = 34, fontSize = 17, tagline = true }) {
           Wireway
         </span>
         {tagline && (
-          <span style={{ fontSize: Math.max(7.5, fontSize * 0.40), letterSpacing: "0.24em", color: "rgba(255,255,255,0.5)", fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>
+          <span className="ww-tagline" style={{ fontSize: Math.max(7.5, fontSize * 0.40), letterSpacing: "0.24em", color: "rgba(255,255,255,0.5)", fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>
             ELECTRICAL ESTIMATOR
           </span>
         )}

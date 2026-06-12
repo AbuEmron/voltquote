@@ -30,11 +30,13 @@ export default function LandingPage({ onSignIn, onSignUp }) {
   const style = {
     page: { minHeight:"100vh", background:"#0a0a0c", fontFamily:"'DM Sans',sans-serif", color:"#fff", overflowX:"hidden" },
     nav: { position:"fixed", top:0, left:0, right:0, zIndex:100, borderBottom:"1px solid rgba(255,255,255,0.06)", background:"rgba(10,10,12,0.92)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", padding:"0 24px" },
-    navInner: { maxWidth:960, margin:"0 auto", height:56, display:"flex", alignItems:"center", justifyContent:"space-between" },
+    navInner: { maxWidth:960, margin:"0 auto", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 },
+    navLink: { padding:"8px 10px", background:"transparent", border:"none", color:"rgba(255,255,255,0.6)", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" },
+    navCta: { padding:"9px 16px", background:"var(--accent)", border:"none", borderRadius:9, color:"#07121d", fontSize:12.5, fontWeight:800, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(var(--accent-rgb),0.35)" },
     section: { maxWidth:960, margin:"0 auto", padding:"0 24px" },
     h1: { fontFamily:"'Syne',sans-serif", fontSize:"clamp(32px,7vw,58px)", fontWeight:800, letterSpacing:"-0.04em", lineHeight:1.05, marginBottom:20 },
     h2: { fontFamily:"'Syne',sans-serif", fontSize:"clamp(22px,4vw,34px)", fontWeight:800, letterSpacing:"-0.03em", lineHeight:1.1, marginBottom:12 },
-    btnPrimary: { padding:"14px 28px", background:"linear-gradient(135deg,rgba(232,201,122,0.22),rgba(232,201,122,0.1))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:11, color:"#e8c97a", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s", display:"inline-block" },
+    btnPrimary: { padding:"14px 30px", background:"var(--accent)", border:"none", borderRadius:11, color:"#07121d", fontSize:15, fontWeight:800, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s", display:"inline-block", boxShadow:"0 6px 24px rgba(var(--accent-rgb),0.35)" },
     btnSecondary: { padding:"12px 22px", background:"transparent", border:"1px solid rgba(255,255,255,0.15)", borderRadius:10, color:"rgba(255,255,255,0.6)", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s", display:"inline-block" },
   };
 
@@ -45,13 +47,14 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         *{box-sizing:border-box;margin:0;padding:0}
         body{background:#0a0a0c;overflow-x:hidden}
         @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @media(max-width:430px){ .ww-tagline{display:none!important} }
         @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
         .fade-up{animation:fadeUp 0.6s ease both}
         .hero-badge:hover,.btn-primary:hover{opacity:0.85}
         .btn-secondary:hover{background:rgba(255,255,255,0.07)!important;color:#fff!important}
         .feat-card:hover{background:rgba(255,255,255,0.04)!important;border-color:rgba(255,255,255,0.1)!important}
-        .job-pill:hover{background:rgba(232,201,122,0.15)!important;border-color:rgba(232,201,122,0.4)!important;color:#e8c97a!important}
-        .cta-btn:hover{background:linear-gradient(135deg,rgba(232,201,122,0.3),rgba(232,201,122,0.15))!important}
+        .job-pill:hover{background:rgba(var(--accent-rgb),0.15)!important;border-color:rgba(var(--accent-rgb),0.4)!important;color:var(--accent)!important}
+        .cta-btn:hover{background:linear-gradient(135deg,rgba(var(--accent-rgb),0.3),rgba(var(--accent-rgb),0.15))!important}
       `}</style>
 
       <div style={style.page}>
@@ -59,12 +62,12 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         {/* ── NAV ── */}
         <nav style={style.nav}>
           <div style={style.navInner}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <WirewayLogo size={36} fontSize={18} tagline />
+            <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+              <WirewayLogo size={32} fontSize={16} tagline />
             </div>
-            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-              <button onClick={onSignIn} style={style.btnSecondary} className="btn-secondary">Sign in</button>
-              <button onClick={onSignUp} style={style.btnPrimary} className="btn-primary">Start free trial</button>
+            <div style={{ display:"flex", gap:4, alignItems:"center", flexShrink:0 }}>
+              <button onClick={onSignIn} style={style.navLink}>Sign in</button>
+              <button onClick={onSignUp} style={style.navCta} className="btn-primary">Start free trial</button>
             </div>
           </div>
         </nav>
@@ -72,13 +75,13 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         {/* ── HERO ── */}
         <section style={{ ...style.section, paddingTop:120, paddingBottom:80, textAlign:"center" }}>
           <div className="fade-up" style={{ animationDelay:"0.1s" }}>
-            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"6px 14px", background:"rgba(232,201,122,0.08)", border:"1px solid rgba(232,201,122,0.2)", borderRadius:30, fontSize:12, color:"rgba(232,201,122,0.8)", fontWeight:600, marginBottom:28, letterSpacing:"0.04em" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"6px 14px", background:"rgba(var(--accent-rgb),0.08)", border:"1px solid rgba(var(--accent-rgb),0.2)", borderRadius:30, fontSize:12, color:"rgba(var(--accent-rgb),0.8)", fontWeight:600, marginBottom:28, letterSpacing:"0.04em" }}>
               ⚡ NEC 2023 · AI-Powered · Built by electricians
             </div>
           </div>
 
           <h1 style={{ ...style.h1 }} className="fade-up">
-            <span style={{ background:"linear-gradient(135deg,#fff 40%,rgba(232,201,122,0.9) 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+            <span style={{ background:"linear-gradient(135deg,#fff 40%,rgba(var(--accent-rgb),0.9) 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
               The electrical estimating tool<br />your competitors don't have
             </span>
           </h1>
@@ -88,7 +91,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           </p>
 
           <div className="fade-up" style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginBottom:48, animationDelay:"0.2s" }}>
-            <button onClick={onSignUp} className="cta-btn" style={{ padding:"16px 36px", background:"linear-gradient(135deg,rgba(232,201,122,0.22),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:12, color:"#e8c97a", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+            <button onClick={onSignUp} className="cta-btn" style={{ padding:"16px 36px", background:"linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(var(--accent-rgb),0.08))", border:"1px solid rgba(var(--accent-rgb),0.4)", borderRadius:12, color:"var(--accent)", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
               Start 30-day free trial
             </button>
             <button onClick={onSignIn} className="btn-secondary" style={style.btnSecondary}>
@@ -117,7 +120,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           <div style={{ maxWidth:960, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:24 }}>
             {PROOF.map(p => (
               <div key={p.label} style={{ textAlign:"center" }}>
-                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:500, color:"#e8c97a", letterSpacing:"-0.02em" }}>{p.num}</div>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:500, color:"var(--accent)", letterSpacing:"-0.02em" }}>{p.num}</div>
                 <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:4 }}>{p.label}</div>
               </div>
             ))}
@@ -162,14 +165,14 @@ export default function LandingPage({ onSignIn, onSignUp }) {
 
         {/* ── FINAL CTA ── */}
         <section style={{ ...style.section, paddingBottom:100, textAlign:"center" }}>
-          <div style={{ background:"linear-gradient(135deg,rgba(232,201,122,0.07),rgba(255,255,255,0.01))", border:"1px solid rgba(232,201,122,0.15)", borderRadius:20, padding:"52px 32px" }}>
+          <div style={{ background:"linear-gradient(135deg,rgba(var(--accent-rgb),0.07),rgba(255,255,255,0.01))", border:"1px solid rgba(var(--accent-rgb),0.15)", borderRadius:20, padding:"52px 32px" }}>
             <h2 style={{ ...style.h2, marginBottom:12 }}>
               Ready to win more jobs?
             </h2>
             <p style={{ fontSize:15, color:"rgba(255,255,255,0.45)", marginBottom:28 }}>
               Start your 30-day free trial. No credit card required.
             </p>
-            <button onClick={onSignUp} className="cta-btn" style={{ padding:"16px 40px", background:"linear-gradient(135deg,rgba(232,201,122,0.22),rgba(232,201,122,0.08))", border:"1px solid rgba(232,201,122,0.4)", borderRadius:12, color:"#e8c97a", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
+            <button onClick={onSignUp} className="cta-btn" style={{ padding:"16px 40px", background:"linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(var(--accent-rgb),0.08))", border:"1px solid rgba(var(--accent-rgb),0.4)", borderRadius:12, color:"var(--accent)", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.2s" }}>
               Start Free Trial — 30 Days
             </button>
             <div style={{ fontSize:12, color:"rgba(255,255,255,0.2)", marginTop:12 }}>Then $12/mo · Cancel anytime</div>
@@ -180,7 +183,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         <footer style={{ borderTop:"1px solid rgba(255,255,255,0.05)", padding:"24px", textAlign:"center" }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, justifyContent:"center", marginBottom:8 }}>
             <WirewayMark size={20} glow={false} />
-            <span style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800 }}><span style={{ color:"#e8c97a" }}>WIRE</span>WAY</span>
+            <span style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800 }}><span style={{ color:"var(--accent)" }}>WIRE</span>WAY</span>
           </div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.2)", letterSpacing:"0.04em" }}>
             NEC 2023 Professional Electrical Estimating · wirewaypro.com<br/>

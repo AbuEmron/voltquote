@@ -1,4 +1,5 @@
 import { WirewayMark } from "./Logo";
+import DemoReel from "./DemoReel";
 // src/LandingPage.jsx
 // Public landing page shown at wireway.cc before the user signs in
 // Converts visitors into signups — headline, features, proof, CTA
@@ -103,47 +104,15 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           </p>
         </section>
 
-        {/* ── APP PREVIEW MOCKUP ── */}
-        <section style={{ ...style.section, paddingBottom:80 }}>
-          <div className="fade-up" style={{ background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:20, padding:"24px", maxWidth:700, margin:"0 auto", animationDelay:"0.3s" }}>
-            {/* Fake app header */}
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, paddingBottom:16, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <WirewayMark size={26} glow={false} />
-                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800 }}><span style={{ color:"#e8c97a" }}>WIRE</span>WAY</span>
-              </div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:18, fontWeight:600, color:"#e8c97a" }}>$4,280</div>
-            </div>
-            {/* AI Quote result preview */}
-            <div style={{ background:"rgba(232,201,122,0.06)", border:"1px solid rgba(232,201,122,0.15)", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
-              <div style={{ fontSize:10, color:"rgba(232,201,122,0.6)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>⚡ AI Quote Builder</div>
-              <div style={{ fontSize:13, color:"rgba(255,255,255,0.7)", fontStyle:"italic", marginBottom:10 }}>"200A panel upgrade with surge protection and grounding electrode"</div>
-              {[
-                { label:"200A Panel Upgrade", nec:"NEC 230.79", total:"$1,850" },
-                { label:"Whole-Home Surge Protector", nec:"NEC 230.67", total:"$420" },
-                { label:"Grounding Electrode System", nec:"NEC 250.50", total:"$580" },
-                { label:"Exterior Emergency Disconnect", nec:"NEC 230.85", total:"$310" },
-              ].map(item => (
-                <div key={item.label} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid rgba(255,255,255,0.04)", fontSize:12 }}>
-                  <span style={{ color:"rgba(255,255,255,0.7)" }}>{item.label} <span style={{ color:"rgba(232,201,122,0.4)", fontSize:9, fontFamily:"'DM Mono',monospace" }}>{item.nec}</span></span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", color:"#e8c97a" }}>{item.total}</span>
-                </div>
-              ))}
-              <div style={{ display:"flex", justifyContent:"space-between", paddingTop:10, marginTop:6, borderTop:"1px solid rgba(232,201,122,0.15)" }}>
-                <span style={{ fontSize:12, color:"rgba(255,255,255,0.5)" }}>Subtotal (before markup)</span>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:16, fontWeight:600, color:"#e8c97a" }}>$3,160</span>
-              </div>
-            </div>
-            {/* Profit bar */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {[{ l:"Revenue", v:"$4,280" }, { l:"Profit", v:"$1,120" }, { l:"Margin", v:"26%" }, { l:"Hours", v:"8.5h" }].map(s => (
-                <div key={s.l} style={{ background:"rgba(255,255,255,0.03)", borderRadius:8, padding:"8px 10px", textAlign:"center" }}>
-                  <div style={{ fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:3 }}>{s.l}</div>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, fontWeight:600, color:"#e8c97a" }}>{s.v}</div>
-                </div>
-              ))}
-            </div>
+        {/* ── WATCH IT WORK — animated demo ── */}
+        <section style={{ ...style.section, paddingBottom:90 }}>
+          <div style={{ textAlign:"center", marginBottom:30 }}>
+            <div style={{ fontSize:11, fontWeight:800, letterSpacing:"0.14em", color:"var(--accent)", textTransform:"uppercase", marginBottom:10 }}>Watch it work</div>
+            <h2 style={{ fontFamily:"'Syne',sans-serif", fontSize:"clamp(22px,4.5vw,32px)", fontWeight:800, letterSpacing:"-0.02em", lineHeight:1.15 }}>
+              Job described to deposit paid —<br/>in under a minute
+            </h2>
           </div>
+          <DemoReel />
         </section>
 
         {/* ── PROOF NUMBERS ── */}

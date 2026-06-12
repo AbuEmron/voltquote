@@ -81,21 +81,22 @@ export default function MaterialsListView({ activeItems, totMat, jobName, onClos
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` },
         body: JSON.stringify({
-          max_tokens: 4000,
+          max_tokens: 4096,
           web_search: true,
           system: `You are a master electrician with 30 years of residential experience writing a material pull list for a supply run. You know exactly what each job needs, including the consumables everyone forgets (staples, wire nuts, connectors, straps, tape).
 
 RULES:
 1. Group materials BY SERVICE — one section per service line given.
 2. For each material: name (short, searchable — what you'd type into Home Depot's search), spec (gauge/amperage/size detail), qty (number), unit (ea, ft, box, roll), price (US big-box unit price in dollars, number only).
-2b. LIVE PRICES: use web search to check CURRENT Home Depot/Lowe's prices for the highest-cost items (panels, wire spools, breakers, EV chargers, fixtures over ~$50) — copper and equipment prices move constantly. Use searched prices when found; use your knowledge of typical shelf prices for commodity small parts. Never inflate.
+2b. MANDATORY LIVE PRICING — your memorized prices for copper wire and cable are YEARS out of date and 40-60% TOO LOW. NEVER price wire or cable from memory. Before writing your answer you MUST run web searches for current Home Depot prices on: (a) EVERY wire/cable coil or spool — NM-B/Romex, THHN, MC, UF (search like: "Home Depot 250 ft 12/2 NM-B price"); (b) every panel/load center; (c) every breaker, especially AFCI/GFCI/dual-function; (d) EV chargers, disconnects, and any fixture/equipment over ~$50. Use the searched price EXACTLY and set "live": true on that item. Only commodity smalls (wire nuts, staples, straps, plates, boxes under ~$20) may use typical current prices — bias those slightly HIGH, never low.
 3. Wire quantities in feet with sensible slack (10-15% extra). Round to purchasable amounts (wire sold in 25/50/100/250ft).
 4. Skip materials for services marked [client supplies materials] but note them in "notes".
 5. Consolidate shared consumables (wire nuts, staples, tape) into a final section called "Consumables & Rough-In".
 6. In "notes": 1-3 sentences — anything client-supplied, items better bought at an electrical supply house than big-box, and any bulk-buy savings.
 
 Respond ONLY with JSON, no markdown fences:
-{"sections":[{"service":"...","items":[{"name":"...","spec":"...","qty":1,"unit":"ea","price":0.00}]}],"notes":"..."}`,
+{"sections":[{"service":"...","items":[{"name":"...","spec":"...","qty":1,"unit":"ea","price":0.00,"live":true}]}],"notes":"..."}
+("live": true ONLY when that price came from a web search you ran; omit or false otherwise.)`,
           messages: [{ role: "user", content: `Job: ${jobName || "Residential electrical"}\nServices:\n${jobLines}` }],
         }),
       });
@@ -213,8 +214,13 @@ Respond ONLY with JSON, no markdown fences:
                           <a href={lwLink(item.name)} target="_blank" rel="noreferrer" style={{ fontSize:9.5, color:"#7eb8e8", textDecoration:"none", fontWeight:700 }}>Lowe's ↗</a>
                         </div>
                       </div>
-                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:600, color:"var(--accent)", flexShrink:0 }}>
-                        ${((item.price || 0) * (item.qty || 1)).toFixed(2)}
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:600, color:"var(--accent)" }}>
+                          ${((item.price || 0) * (item.qty || 1)).toFixed(2)}
+                        </div>
+                        {item.live && (
+                          <div style={{ fontSize:8, fontWeight:800, letterSpacing:"0.08em", color:"#7dcea0", marginTop:2 }}>● LIVE</div>
+                        )}
                       </div>
                     </div>
                   );

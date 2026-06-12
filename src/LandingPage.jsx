@@ -1,4 +1,4 @@
-import { WirewayMark } from "./Logo";
+import { WirewayMark, WirewayLogo } from "./Logo";
 import DemoReel from "./DemoReel";
 // src/LandingPage.jsx
 // Public landing page shown at wirewaypro.com before the user signs in
@@ -60,10 +60,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         <nav style={style.nav}>
           <div style={style.navInner}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <WirewayMark size={30} />
-              <span style={{ fontFamily:"'Syne',sans-serif", fontSize:17, fontWeight:800, letterSpacing:"-0.02em" }}>
-                <span style={{ color:"#e8c97a" }}>WIRE</span>WAY
-              </span>
+              <WirewayLogo size={36} fontSize={18} tagline />
             </div>
             <div style={{ display:"flex", gap:10, alignItems:"center" }}>
               <button onClick={onSignIn} style={style.btnSecondary} className="btn-secondary">Sign in</button>

@@ -46,16 +46,18 @@ export function WirewayMark({ size = 30, glow = false }) {
   );
 }
 
-export function WirewayLogo({ size = 30, fontSize = 16, tagline = false }) {
+export function WirewayLogo({ size = 34, fontSize = 17, tagline = true }) {
+  // The official lockup: brand chip + "Wireway" + ELECTRICAL ESTIMATOR tagline.
+  // Vector mark + system-rendered type = crisp at every size on every platform.
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
       <WirewayMark size={size} />
-      <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.1 }}>
-        <span style={{ fontFamily: "'Syne',sans-serif", fontSize, fontWeight: 800, letterSpacing: "-0.02em", whiteSpace: "nowrap", color: "#fff" }}>
+      <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.05 }}>
+        <span style={{ fontFamily: "'Quicksand','DM Sans',sans-serif", fontSize, fontWeight: 700, letterSpacing: "0.01em", whiteSpace: "nowrap", color: "#fff" }}>
           Wireway
         </span>
         {tagline && (
-          <span style={{ fontSize: Math.max(8, fontSize * 0.42), letterSpacing: "0.22em", color: "rgba(255,255,255,0.45)", fontWeight: 600 }}>
+          <span style={{ fontSize: Math.max(7.5, fontSize * 0.40), letterSpacing: "0.24em", color: "rgba(255,255,255,0.5)", fontWeight: 600, whiteSpace: "nowrap", marginTop: 2 }}>
             ELECTRICAL ESTIMATOR
           </span>
         )}

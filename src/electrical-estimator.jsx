@@ -8,7 +8,7 @@ import ProposalView from "./ProposalView";
 import CustomersView from "./CustomersView";
 import { THEMES, applyTheme, getSavedTheme, saveTheme } from "./themes";
 import MaterialsListView from "./MaterialsListView";
-import { WirewayMark } from "./Logo";
+import { WirewayMark, WirewayLogo } from "./Logo";
 import Dashboard from "./Dashboard";
 import { Pill, StatCard, CategorySection, NECReference } from "./WiremComponents";
 import WiremModals from "./WiremModals";
@@ -525,10 +525,7 @@ export default function Wireway({ user, profile, onProfileUpdate, onShowPricing,
           <div style={{ borderBottom:"1px solid var(--line)", background:"rgba(10,10,12,0.9)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", position:"sticky", top:0, zIndex:100, padding:"0 20px" }}>
             <div style={{ maxWidth:680, margin:"0 auto", height:54, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <WirewayMark size={30} />
-                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, letterSpacing:"-0.02em", whiteSpace:"nowrap", flexShrink:0, color:"#fff" }}>
-                  <span style={{ color:"var(--accent)" }}>WIRE</span>WAY
-                </span>
+                <WirewayLogo size={34} fontSize={16} tagline />
               </div>
               <div style={{ display:"flex", gap:6 }}>
                 <button onClick={() => setShowCustomers(true)} title="Customers" style={{ padding:"6px 11px", borderRadius:7, border:"1px solid var(--line-strong)", background:"transparent", color:"rgba(255,255,255,0.45)", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>👥</button>

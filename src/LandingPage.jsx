@@ -1,7 +1,7 @@
 import { WirewayMark } from "./Logo";
 import DemoReel from "./DemoReel";
 // src/LandingPage.jsx
-// Public landing page shown at wireway.cc before the user signs in
+// Public landing page shown at wirewaypro.com before the user signs in
 // Converts visitors into signups — headline, features, proof, CTA
 
 export default function LandingPage({ onSignIn, onSignUp }) {
@@ -186,7 +186,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             <span style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800 }}><span style={{ color:"#e8c97a" }}>WIRE</span>WAY</span>
           </div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.2)", letterSpacing:"0.04em" }}>
-            NEC 2023 Professional Electrical Estimating · wireway.cc
+            NEC 2023 Professional Electrical Estimating · wirewaypro.com
           </div>
         </footer>
       </div>

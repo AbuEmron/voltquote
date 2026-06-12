@@ -10,7 +10,9 @@ const supabase = createClient(
 );
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "https://wireway.cc");
+  const ALLOWED = ["https://www.wirewaypro.com", "https://wirewaypro.com", "https://wireway.cc", "https://www.wireway.cc"];
+  const origin = ALLOWED.includes(req.headers.origin) ? req.headers.origin : ALLOWED[0];
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
@@ -31,7 +33,7 @@ module.exports = async function handler(req, res) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: "https://wireway.cc/",
+      return_url: origin + "/",
     });
 
     return res.status(200).json({ url: session.url });

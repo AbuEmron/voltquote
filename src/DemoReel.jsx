@@ -131,7 +131,7 @@ export default function DemoReel() {
           {scene === 3 && (
             <div key={tick} style={{ paddingTop:18 }}>
               <div className="dr-item" style={{ maxWidth:"82%", background:"rgba(var(--accent-rgb),0.16)", border:"1px solid rgba(var(--accent-rgb),0.3)", borderRadius:"14px 14px 14px 4px", padding:"10px 12px", fontSize:11, lineHeight:1.6, color:"rgba(255,255,255,0.9)" }}>
-                Hi Sarah, here's your secure payment link for the panel upgrade: <span style={{ color:"var(--accent)", textDecoration:"underline" }}>pay.wireway.cc/q1284</span>
+                Hi Sarah, here's your secure payment link for the panel upgrade: <span style={{ color:"var(--accent)", textDecoration:"underline" }}>pay.wirewaypro.com/q1284</span>
               </div>
               <div className="dr-item" style={{ animationDelay:"1s", maxWidth:"60%", marginLeft:"auto", marginTop:10, background:"rgba(255,255,255,0.07)", borderRadius:"14px 14px 4px 14px", padding:"10px 12px", fontSize:11, color:"rgba(255,255,255,0.8)" }}>
                 Just paid! Thank you 🙏

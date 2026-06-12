@@ -113,7 +113,7 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
           {/* Back to landing */}
           {onBack && (
             <button onClick={onBack} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.2)", fontSize:11, cursor:"pointer", fontFamily:"inherit", marginTop:8 }}>
-              ← Back to wireway.cc
+              ← Back to wirewaypro.com
             </button>
           )}
             {mode === "signin" && (

@@ -111,7 +111,7 @@ export default function DemoReel() {
             <div key={tick} className="dr-pop" style={{ background:"#f5f3ee", borderRadius:12, height:"100%", padding:"16px 15px", color:"#1a1a1c" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"2px solid #1a1a1c", paddingBottom:9, marginBottom:11 }}>
                 <span style={{ fontSize:11, fontWeight:800 }}>Your Company LLC</span>
-                <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.1em", color:"#b8932f" }}>PROPOSAL</span>
+                <span style={{ fontSize:10, fontWeight:800, letterSpacing:"0.1em", color:"#1273d2" }}>PROPOSAL</span>
               </div>
               {[78, 64, 84, 58].map((w, i) => (
                 <div key={i} style={{ height:6, width:`${w}%`, background:"#d8d4cb", borderRadius:3, marginBottom:7 }} />

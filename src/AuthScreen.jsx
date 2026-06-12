@@ -5,7 +5,7 @@ import { signIn, signUp, resetPassword } from "./lib/supabase";
 
 const IS = {
   background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.07)",
+  border: "1px solid var(--line)",
   borderRadius: 8,
   padding: "10px 13px",
   fontSize: 14,
@@ -25,7 +25,7 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
   const [error,    setError]    = useState("");
   const [success,  setSuccess]  = useState("");
 
-  const focusGold = e => e.target.style.borderColor = "rgba(232,201,122,0.4)";
+  const focusGold = e => e.target.style.borderColor = "rgba(var(--accent-rgb),0.4)";
   const blurGray  = e => e.target.style.borderColor = "rgba(255,255,255,0.07)";
 
   const handle = async () => {
@@ -59,23 +59,23 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        body{background:#0a0a0c}
+        body{background:var(--bg0)}
         @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"radial-gradient(ellipse 80% 50% at 50% 0%,rgba(232,201,122,0.07) 0%,transparent 60%),#0a0a0c", fontFamily:"'DM Sans',sans-serif", padding:"24px 20px" }}>
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"var(--bg-scene)", fontFamily:"'DM Sans',sans-serif", padding:"24px 20px" }}>
 
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:40, animation:"fadeUp 0.4s ease both" }}>
           <WirewayMark size={52} />
           <div>
             <div style={{ fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, letterSpacing:"-0.03em", color:"#fff", lineHeight:1.1 }}>
-              <span style={{ color:"#e8c97a" }}>WIRE</span><span style={{ color:"#fff" }}>WAY</span>
+              <span style={{ color:"var(--accent)" }}>WIRE</span><span style={{ color:"#fff" }}>WAY</span>
             </div>
             <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)", letterSpacing:"0.1em", textTransform:"uppercase" }}>Electrical Estimator</div>
           </div>
         </div>
 
-        <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,0.025)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:18, padding:"28px 24px", animation:"fadeUp 0.4s ease 0.05s both" }}>
+        <div style={{ width:"100%", maxWidth:380, background:"var(--card)", border:"1px solid var(--line)", borderRadius:18, padding:"28px 24px", animation:"fadeUp 0.4s ease 0.05s both" }}>
 
           <div style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:800, color:"#fff", marginBottom:6, letterSpacing:"-0.02em" }}>
             {mode === "signin" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset password"}
@@ -106,7 +106,7 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
           {error   && <div style={{ fontSize:12, color:"#e87e7e", background:"rgba(232,126,126,0.08)", border:"1px solid rgba(232,126,126,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:12, lineHeight:1.5 }}>{error}</div>}
           {success && <div style={{ fontSize:12, color:"#7dcea0", background:"rgba(100,220,130,0.08)", border:"1px solid rgba(100,220,130,0.2)", borderRadius:7, padding:"8px 10px", marginBottom:12, lineHeight:1.5 }}>{success}</div>}
 
-          <button onClick={handle} disabled={loading} style={{ width:"100%", padding:"13px", background: loading ? "rgba(232,201,122,0.08)" : "linear-gradient(135deg,rgba(232,201,122,0.22),rgba(232,201,122,0.1))", border:"1px solid rgba(232,201,122,0.35)", borderRadius:10, color: loading ? "rgba(232,201,122,0.4)" : "#e8c97a", fontSize:14, fontWeight:700, cursor: loading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s", marginBottom:16 }}>
+          <button onClick={handle} disabled={loading} style={{ width:"100%", padding:"13px", background: loading ? "rgba(var(--accent-rgb),0.08)" : "linear-gradient(135deg,rgba(var(--accent-rgb),0.22),rgba(var(--accent-rgb),0.1))", border:"1px solid rgba(var(--accent-rgb),0.35)", borderRadius:10, color: loading ? "rgba(var(--accent-rgb),0.4)" : "var(--accent)", fontSize:14, fontWeight:700, cursor: loading ? "default" : "pointer", fontFamily:"inherit", transition:"all 0.2s", marginBottom:16 }}>
             {loading ? "Please wait..." : mode === "signin" ? "Sign In" : mode === "signup" ? "Create Account" : "Send Reset Link"}
           </button>
 
@@ -119,7 +119,7 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
             {mode === "signin" && (
               <>
                 <button onClick={() => { setMode("signup"); setError(""); setSuccess(""); }} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                  Don't have an account? <span style={{ color:"#e8c97a", fontWeight:600 }}>Sign up free</span>
+                  Don't have an account? <span style={{ color:"var(--accent)", fontWeight:600 }}>Sign up free</span>
                 </button>
                 <button onClick={() => { setMode("reset"); setError(""); setSuccess(""); }} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.25)", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                   Forgot password?
@@ -128,7 +128,7 @@ export default function AuthScreen({ onAuth, initialMode = "signin", onBack }) {
             )}
             {mode === "signup" && (
               <button onClick={() => { setMode("signin"); setError(""); setSuccess(""); }} style={{ background:"transparent", border:"none", color:"rgba(255,255,255,0.4)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-                Already have an account? <span style={{ color:"#e8c97a", fontWeight:600 }}>Sign in</span>
+                Already have an account? <span style={{ color:"var(--accent)", fontWeight:600 }}>Sign in</span>
               </button>
             )}
             {mode === "reset" && (

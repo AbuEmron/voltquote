@@ -19,7 +19,7 @@ export default function ProposalView({
     <div style={{ position:"fixed", inset:0, zIndex:400, background:"#3a3a3e", overflowY:"auto" }} className="proposal-root">
       <style>{`
         .proposal-page{max-width:760px;margin:24px auto;background:#fff;color:#1a1a1c;font-family:Georgia,'Times New Roman',serif;padding:56px 60px;box-shadow:0 8px 40px rgba(0,0,0,0.4)}
-        .pv-bar{position:sticky;top:0;z-index:10;background:#111115;border-bottom:1px solid rgba(232,201,122,0.25);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif}
+        .pv-bar{position:sticky;top:0;z-index:10;background:#111115;border-bottom:1px solid rgba(18,115,210,0.25);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif}
         .pv-table{width:100%;border-collapse:collapse;font-size:13px}
         .pv-table th{text-align:left;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8a8e;border-bottom:2px solid #1a1a1c;padding:6px 4px}
         .pv-table td{padding:8px 4px;border-bottom:1px solid #e8e8ea;vertical-align:top}
@@ -34,9 +34,9 @@ export default function ProposalView({
 
       {/* Toolbar (hidden in print) */}
       <div className="pv-bar no-print">
-        <span style={{ color:"#e8c97a", fontWeight:700, fontSize:13 }}>Proposal Preview</span>
+        <span style={{ color:"#1273d2", fontWeight:700, fontSize:13 }}>Proposal Preview</span>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={() => window.print()} style={{ padding:"8px 18px", borderRadius:8, background:"linear-gradient(135deg,rgba(232,201,122,0.25),rgba(232,201,122,0.1))", border:"1px solid rgba(232,201,122,0.45)", color:"#e8c97a", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+          <button onClick={() => window.print()} style={{ padding:"8px 18px", borderRadius:8, background:"linear-gradient(135deg,rgba(18,115,210,0.25),rgba(18,115,210,0.1))", border:"1px solid rgba(18,115,210,0.45)", color:"#1273d2", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
             ⬇ Download PDF
           </button>
           <button onClick={onClose} style={{ padding:"8px 14px", borderRadius:8, background:"transparent", border:"1px solid rgba(255,255,255,0.15)", color:"rgba(255,255,255,0.6)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
@@ -62,7 +62,7 @@ export default function ProposalView({
             </div>
           </div>
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:26, fontWeight:700, letterSpacing:"0.12em", color:"#b8932f" }}>PROPOSAL</div>
+            <div style={{ fontSize:26, fontWeight:700, letterSpacing:"0.12em", color:"#1273d2" }}>PROPOSAL</div>
             <div style={{ fontSize:11, color:"#6a6a6e", marginTop:6, lineHeight:1.7 }}>
               {quoteNumber && <>No. {quoteNumber}<br/></>}
               {today}
@@ -103,7 +103,7 @@ export default function ProposalView({
                 <td>
                   <span style={{ fontWeight:600 }}>{item.label}</span>
                   {item.variantLabel && item.variantLabel !== "Standard" && <span style={{ color:"#8a8a8e" }}> — {item.variantLabel}</span>}
-                  {item.nec && <div style={{ fontSize:10, color:"#b8932f", marginTop:2 }}>Per {item.nec}</div>}
+                  {item.nec && <div style={{ fontSize:10, color:"#1273d2", marginTop:2 }}>Per {item.nec}</div>}
                 </td>
                 <td className="pv-num">{item.qty}</td>
                 <td className="pv-num">${Math.round(item.lineTotal * factor).toLocaleString()}</td>

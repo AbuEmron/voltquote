@@ -3,19 +3,18 @@ import GyroField from '../components/GyroField/GyroField';
 import Brand from '../components/Brand';
 import './Landing.css';
 
-export default function Landing() {
+// onSignIn / onSignUp are passed down from App.jsx — they trigger your
+// existing Supabase auth flow (setAuthMode), so login is unchanged.
+export default function Landing({ onSignIn, onSignUp }) {
   return (
     <>
       <GyroField variant="hero" />
       <div className="ww-veil-landing" />
       <div className="ww-page ww-landing">
         <header className="top">
-          <Brand />
+          <Brand src="/logo192.png" />
           <nav className="nav">
-            <a href="#">Estimator</a>
-            <a href="#">Quote Builder</a>
-            <a href="#">Code library</a>
-            <a href="#">Pricing</a>
+            <button type="button" className="nav-link" onClick={onSignIn}>Sign in</button>
           </nav>
         </header>
 
@@ -27,8 +26,8 @@ export default function Landing() {
             Price the panel before you leave the truck.
           </p>
           <div className="cta-row">
-            <button className="btn btn-primary">Start an estimate</button>
-            <button className="btn btn-ghost">See a sample quote</button>
+            <button type="button" className="btn btn-primary" onClick={onSignUp}>Start an estimate</button>
+            <button type="button" className="btn btn-ghost" onClick={onSignIn}>Sign in</button>
           </div>
         </section>
 

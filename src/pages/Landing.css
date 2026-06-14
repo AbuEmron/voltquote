@@ -8,9 +8,14 @@
 .ww-landing { display: flex; flex-direction: column; padding: clamp(20px, 4vw, 44px); }
 
 .ww-landing .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.ww-landing .nav { display: flex; gap: 26px; font-size: 13px; color: var(--steel); }
+.ww-landing .nav { display: flex; gap: 26px; font-size: 13px; color: var(--steel); align-items: center; }
 .ww-landing .nav a { color: inherit; text-decoration: none; transition: color .18s; }
 .ww-landing .nav a:hover, .ww-landing .nav a:focus-visible { color: var(--paper); }
+.ww-landing .nav .nav-link {
+  background: none; border: none; padding: 0; font: inherit; font-size: 13px;
+  color: var(--steel); cursor: pointer; transition: color .18s;
+}
+.ww-landing .nav .nav-link:hover, .ww-landing .nav .nav-link:focus-visible { color: var(--paper); }
 @media (max-width: 720px) { .ww-landing .nav { display: none; } }
 
 .ww-landing .hero { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 760px; min-height: 70vh; }
